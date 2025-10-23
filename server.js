@@ -22,7 +22,7 @@ const mpClient = new MercadoPagoConfig({
 });
 
 // Armazenamento temporário de pagamentos pendentes.
-const pendingPayments = {};
+const pendingPayments = {}; // Agora armazena: { paymentId: { videos, amount, message, socketId } }
 
 // 🔽🔽🔽 [VARIÁVEIS GLOBAIS DE ESTADO] 🔽🔽🔽
 let dailyRevenue = 0.0;
@@ -188,20 +188,22 @@ app.get("/search", async (req, res) => {
   }
 });
 
-// 🔹 Endpoint para criar pagamento PIX
+// 🔹 Endpoint para criar pagamento PIX (com socketId e payer placeholder)
 app.post("/create-payment", async (req, res) => {
   try {
-    const { videos, amount, description, message } = req.body;
+    // Recebe 'socketId' do frontend
+    const { videos, amount, description, message, socketId } = req.body;
 
-    if (!videos || videos.length === 0 || !amount || !description) {
+    // Valida dados essenciais (incluindo socketId)
+    if (!videos || videos.length === 0 || !amount || !description || !socketId) {
       console.error('[Server] Dados inválidos recebidos para /create-payment:', req.body);
-      return res.status(400).json({ ok: false, error: "Dados inválidos para pagamento." });
+      return res.status(400).json({ ok: false, error: "Dados inválidos para pagamento (faltando socketId?)." });
     }
 
     // URL REAL DO SEU SITE RENDER
     const notification_url = "https://conteinermusic.onrender.com/webhook";
 
-    console.log(`[Server] Criando pagamento PIX: ${description}, Valor: ${amount}`);
+    console.log(`[Server] Criando pagamento PIX para socket ${socketId}: ${description}, Valor: ${amount}`);
     const payment_data = {
         transaction_amount: Number(amount),
         description: description,
@@ -221,9 +223,9 @@ app.post("/create-payment", async (req, res) => {
 
     const qrData = result.point_of_interaction.transaction_data;
 
-    // Salva os vídeos, valor e mensagem para o webhook
-    pendingPayments[result.id] = { videos: videos, amount: Number(amount), message: message };
-    console.log(`[Server] Pagamento ${result.id} (${description}) criado, aguardando webhook...`);
+    // Salva o socketId junto com os outros dados
+    pendingPayments[result.id] = { videos: videos, amount: Number(amount), message: message, socketId: socketId };
+    console.log(`[Server] Pagamento ${result.id} (${description}) criado para socket ${socketId}, aguardando webhook...`);
 
     res.json({
       ok: true,
@@ -254,7 +256,7 @@ app.post("/create-payment", async (req, res) => {
 });
 
 
-// 🔹 Webhook para receber confirmação de pagamento (Lógica Corrigida)
+// 🔹 Webhook para receber confirmação de pagamento (Lógica Corrigida para ambos formatos)
 app.post("/webhook", async (req, res) => {
   console.log("[Server] Webhook recebido!");
   console.log("[Server] Corpo do Webhook:", req.body);
@@ -268,6 +270,7 @@ app.post("/webhook", async (req, res) => {
         paymentId = notification.data.id;
         console.log(`[Server] Notificação detalhada recebida para ID: ${paymentId}`);
     } else if (notification?.topic === 'payment' && notification.resource) {
+        // Extrai o ID da URL do resource
         const urlParts = notification.resource.split('/');
         paymentId = urlParts[urlParts.length - 1];
         console.log(`[Server] Notificação simples recebida para ID: ${paymentId}`);
@@ -291,7 +294,7 @@ app.post("/webhook", async (req, res) => {
     if (paymentDetails.status === 'approved' && pendingPayments[paymentId]) {
       console.log(`[Server] Pagamento ${paymentId} APROVADO! Processando pedido.`);
 
-      const order = pendingPayments[paymentId];
+      const order = pendingPayments[paymentId]; // Contém { videos, amount, message, socketId }
 
       // 1. Atualiza o faturamento
       dailyRevenue += order.amount;
@@ -306,33 +309,41 @@ app.post("/webhook", async (req, res) => {
       const customerVideos = order.videos.map(v => ({
         ...v,
         isCustomer: true,
-        message: order.message
+        message: order.message // Adiciona a mensagem do pedido
       }));
 
       // 4. Adiciona à fila e decide se toca agora
       if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
         console.log('[Server] Música da casa interrompida para tocar cliente.');
         mainQueue = [...customerVideos, ...mainQueue];
-        playNextInQueue();
+        playNextInQueue(); // Pula a música da casa e toca a do cliente
       } else {
         mainQueue.push(...customerVideos);
         if (!nowPlayingInfo) {
             console.log('[Server] Player ocioso, iniciando fila do cliente.');
-            playNextInQueue();
+            playNextInQueue(); // Começa a tocar se nada estiver tocando
         } else {
             console.log('[Server] Player ocupado, adicionando cliente ao fim da fila.');
-            broadcastPlayerState();
+            broadcastPlayerState(); // Apenas atualiza a UI da fila
         }
       }
 
-      // 5. Remove da lista de pendentes APÓS processar
+      // 5. ENVIA CONFIRMAÇÃO PARA O CLIENTE ESPECÍFICO
+      if (order.socketId) {
+          console.log(`[Server] Enviando confirmação de pagamento para socket ${order.socketId}`);
+          io.to(order.socketId).emit('paymentConfirmed');
+      } else {
+          console.warn(`[Server] Não foi possível encontrar socketId para o pagamento ${paymentId} para enviar confirmação.`);
+      }
+
+      // 6. Remove da lista de pendentes APÓS processar
       delete pendingPayments[paymentId];
       console.log(`[Server] Pagamento ${paymentId} processado e removido da lista de pendentes.`);
 
     } else if (paymentDetails.status !== 'approved' && pendingPayments[paymentId]) {
       // Pagamento ainda não aprovado (pending, rejected, etc.)
       console.log(`[Server] Status do pagamento ${paymentId} ainda é '${paymentDetails.status}'. Aguardando aprovação (não removendo dos pendentes).`);
-      // NÃO remove da lista pendingPayments aqui.
+      // NÃO remove da lista pendingPayments aqui. Espera o webhook de 'approved'.
     } else if (!pendingPayments[paymentId]) {
         console.log(`[Server] Notificação recebida para pagamento ${paymentId} (Status: ${paymentDetails.status}) que não estava pendente ou já foi processado.`);
     }
