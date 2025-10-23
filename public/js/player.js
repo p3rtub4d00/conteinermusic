@@ -186,7 +186,7 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
     console.log(`[Player.js] Preparando para falar a mensagem: "${message}"`);
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'pt-BR';
-    utterance.rate = 0.2; // Velocidade ajustada
+    utterance.rate = 0.8; // Velocidade ajustada
     utterance.pitch = 1.0;
 
     let speechTimeout = null;
@@ -230,4 +230,5 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
     console.log('[Player.js] Tocando vídeo diretamente.');
     loadAndPlayVideo();
   }
+
 }
