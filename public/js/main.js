@@ -7,14 +7,14 @@ const resultsDiv = document.getElementById('results');
 const selectedList = document.getElementById('selected');
 const countSpan = document.getElementById('count');
 const pagarBtn = document.getElementById('pagarBtn');
-const simularBtn = document.getElementById('simularBtn');
+// const simularBtn = document.getElementById('simularBtn'); // ❗️ VARIÁVEL COMENTADA
 const pixArea = document.getElementById('pixArea');
-const pixTitle = document.getElementById('pixTitle'); // Título da área PIX
+const pixTitle = document.getElementById('pixTitle');
 const qrCodeImg = document.getElementById('qrCode');
-const copiaColaWrapper = pixArea?.querySelector('.copia-cola-wrapper'); // Wrapper do copia e cola (Usa optional chaining)
+const copiaColaWrapper = pixArea?.querySelector('.copia-cola-wrapper');
 const copiaColaText = document.getElementById('copiaCola');
-const copyPixBtn = document.getElementById('copyPixBtn'); // Botão Copiar
-const paymentStatusMsg = document.getElementById('paymentStatusMsg'); // Parágrafo para status
+const copyPixBtn = document.getElementById('copyPixBtn');
+const paymentStatusMsg = document.getElementById('paymentStatusMsg');
 const nowPlayingArea = document.getElementById('now-playing-area');
 const nowPlayingTitleSpan = document.getElementById('nowPlayingTitle');
 const packageRadios = document.querySelectorAll('input[name="package"]');
@@ -75,14 +75,13 @@ function updateSelectedPackage() {
     atualizarLista();
 }
 
+// ❗️ MODIFICADO: Atualiza apenas o botão Pagar
 function updatePaymentButtonText() {
     if (!pagarBtn) return;
-    // O texto inicial SEMPRE mostra o preço base do pacote
     pagarBtn.textContent = `Pagar R$ ${selectedPackage.price.toFixed(2).replace('.', ',')} (PIX)`;
-    // Habilita/Desabilita botões baseado no limite ATUAL do pacote
     const canPay = selectedVideos.length === selectedPackage.limit;
     pagarBtn.disabled = !canPay;
-    if (simularBtn) simularBtn.disabled = !canPay;
+    // if (simularBtn) simularBtn.disabled = !canPay; // ❗️ LINHA COMENTADA
 }
 
 // Função de Busca (Com aplicação de estado visual inicial)
@@ -174,7 +173,7 @@ function atualizarLista() {
         .join('');
   }
   if (countSpan) countSpan.textContent = selectedVideos.length;
-  updatePaymentButtonText(); // Atualiza estado dos botões Pagar/Simular
+  updatePaymentButtonText(); // Atualiza estado do botão Pagar
 }
 
 // Remove Vídeo (Com feedback visual)
@@ -231,19 +230,17 @@ function resetUI() {
 // Função que processa o pagamento
 async function proceedToPayment() {
   if(pagarBtn) pagarBtn.disabled = true;
-  if(simularBtn) simularBtn.disabled = true;
+  // if(simularBtn) simularBtn.disabled = true; // ❗️ LINHA COMENTADA
 
-  // ❗️❗️ [VERIFICAÇÃO DE SOCKET.ID] ❗️❗️
+  // Verificação de Socket.ID
   if (!socket || !socket.id) {
       console.error("[main.js] Erro: socket.id ainda não está definido. Conexão não estabelecida?");
       alert("Erro de conexão com o servidor. Por favor, aguarde alguns segundos e tente novamente.");
-      updatePaymentButtonText(); // Reabilita botões
-      return; // Interrompe
+      updatePaymentButtonText(); // Reabilita botão Pagar
+      return;
   }
-  // ❗️❗️ [FIM DA VERIFICAÇÃO] ❗️❗️
 
   const videos = selectedVideos;
-
   console.log("[main.js] Enviando para pagamento:", { videos, amount: finalAmount, description: finalDescription, message: finalMessage, socketId: socket.id });
 
   try {
@@ -255,7 +252,7 @@ async function proceedToPayment() {
           amount: finalAmount,
           description: finalDescription,
           message: finalMessage,
-          socketId: socket.id // Envia o ID do socket (agora verificado)
+          socketId: socket.id // Envia o ID do socket
         })
       });
 
@@ -267,38 +264,29 @@ async function proceedToPayment() {
 
       // Mostra a área do PIX
       if (pixArea) pixArea.style.display = 'block';
-      // const qrCodeImg = document.getElementById('qrCode'); // Já declarado
-      // const copiaColaText = document.getElementById('copiaCola'); // Já declarado
-
-      // Preenche os dados do PIX
       if(qrCodeImg) qrCodeImg.src = `data:image/png;base64,${data.qr}`;
       if(copiaColaText) copiaColaText.value = data.copiaCola;
 
-      // Garante que elementos corretos estão visíveis
+      // Garante estado visual inicial da área PIX
       if(pixTitle) pixTitle.textContent = "Faça o PIX";
       if(qrCodeImg) qrCodeImg.style.display = 'block';
       if(copiaColaWrapper) copiaColaWrapper.style.display = 'block';
-      if(paymentStatusMsg) paymentStatusMsg.style.display = 'none'; // Esconde msg de status
-
-      // Reseta botão copiar
+      if(paymentStatusMsg) paymentStatusMsg.style.display = 'none';
       if(copyPixBtn) {
           copyPixBtn.textContent = 'Copiar Código';
           copyPixBtn.classList.remove('copied');
           copyPixBtn.disabled = false;
-          copyPixBtn.style.display = 'inline-block'; // Garante visibilidade
+          copyPixBtn.style.display = 'inline-block';
       }
 
-      // ❗️❗️ resetUI() NÃO É CHAMADO AQUI ❗️❗️
-
-      // Apenas limpa a seleção atual e desabilita botões Pagar/Simular
+      // Limpa seleção e desabilita Pagar
       selectedVideos = [];
       atualizarLista();
-
 
   } catch (error) {
        console.error("[main.js] Erro detalhado ao gerar pagamento:", error);
        alert(`Erro ao gerar pagamento: ${error.message}`);
-       updatePaymentButtonText(); // Reabilita botões se falhar
+       updatePaymentButtonText(); // Reabilita botão Pagar
   }
 }
 
@@ -381,7 +369,9 @@ if (messageModal) {
     });
 } else { console.error("Modal messageModal não encontrado!"); }
 
-// Listener de Simulação (Chama resetUI aqui)
+// ❗️❗️ LISTENER DE SIMULAÇÃO COMENTADO ❗️❗️
+/*
+const simularBtn = document.getElementById('simularBtn'); // Pega a referência ANTES de comentar o listener
 if (simularBtn) {
     simularBtn.addEventListener('click', () => {
       const videos = selectedVideos;
@@ -394,8 +384,11 @@ if (simularBtn) {
 
       resetUI(); // Reset é OK aqui na simulação
     });
-} else { console.error("Botão simularBtn não encontrado!"); }
-
+} else {
+    // console.error("Botão simularBtn não encontrado!"); // Não é mais um erro crítico
+    console.warn("Botão 'Simular Pagamento' (simularBtn) não encontrado ou comentado.");
+}
+*/
 
 // Listener para o Botão Copiar PIX
 if (copyPixBtn) {
@@ -442,7 +435,6 @@ socket.on('connect', () => {
 
 socket.on('disconnect', (reason) => {
     console.warn('[main.js] Desconectado do servidor. Razão:', reason);
-    // Poderíamos tentar reconectar aqui se necessário: if (reason === 'io server disconnect') socket.connect();
 });
 
 socket.on('connect_error', (err) => {
@@ -462,7 +454,7 @@ socket.on('updatePlayerState', (state) => {
 
 // Listener para Confirmação de Pagamento
 socket.on('paymentConfirmed', () => {
-    console.log('[main.js] Recebido evento paymentConfirmed do servidor! Mostrando confirmação...'); // <-- LOG ADICIONADO
+    console.log('[main.js] Recebido evento paymentConfirmed do servidor! Mostrando confirmação...');
     if (pixArea && paymentStatusMsg) {
         // Esconde QR code e Copia/Cola
         if(qrCodeImg) qrCodeImg.style.display = 'none';
