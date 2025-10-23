@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contêiner Music Box</title> 
+  <title>Contêiner Music Box</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  
+
   <div class="container">
     <header>
       <img src="/images/logo.png" alt="Contêiner Music Box" id="logo">
@@ -18,24 +18,24 @@
     </header>
 
     <div id="package-selection">
-      <div class="package-option"> 
+      <div class="package-option">
         <label>
           <input type="radio" name="package" value="3" data-price="2.00" data-limit="3" checked>
-          <span> 
+          <span>
             Pacote 3 Músicas<br><small>(R$ 2,00)</small>
-          </span> 
+          </span>
         </label>
       </div>
       <div class="package-option">
         <label>
           <input type="radio" name="package" value="5" data-price="3.00" data-limit="5">
-          <span> 
+          <span>
             Pacote 5 Músicas<br><small>(R$ 3,00)</small>
           </span>
         </label>
       </div>
     </div>
-    
+
     <div id="now-playing-area" style="display: none;">
       <span class="label">Tocando Agora:</span>
       <span id="nowPlayingTitle">...</span>
@@ -51,25 +51,27 @@
         <div id="results">
           </div>
       </div>
-      
+
       <div id="selection-area">
-        <h2>Sua seleção (<span id="count">0</span>/<span id="limit">3</span>)</h2> 
+        <h2>Sua seleção (<span id="count">0</span>/<span id="limit">3</span>)</h2>
         <ul id="selected">
           </ul>
       </div>
 
       <div id="action-buttons">
-        <button id="pagarBtn" class="btn-primary" disabled>Pagar R$ 2,00 (PIX)</button> 
+        <button id="pagarBtn" class="btn-primary" disabled>Pagar R$ 2,00 (PIX)</button>
         <button id="simularBtn" class="btn-secondary" disabled>Simular Pagamento (Teste)</button>
       </div>
-      
+
       <div id="pixArea" style="display:none;">
-        <h2>Faça o PIX</h2>
-        <img id="qrCode" alt="QR Code PIX">
-        <p><b>Copia e Cola:</b></p>
-        <textarea id="copiaCola" readonly></textarea>
+        <h2 id="pixTitle">Faça o PIX</h2>
+        <img id="qrCode" alt="QR Code PIX" style="display: block;"> <div class="copia-cola-wrapper" style="display: block;"> <p><b>Copia e Cola:</b></p>
+            <textarea id="copiaCola" readonly></textarea>
+            <button id="copyPixBtn" class="btn-copy">Copiar Código</button>
+        </div>
+        <p id="paymentStatusMsg" style="display: none;"></p>
       </div>
-    </main>
+      </main>
   </div>
 
   <div id="messageModal" class="modal-overlay" style="display: none;">
@@ -77,7 +79,7 @@
       <span class="modal-close-btn" id="modalCloseBtn">&times;</span>
       <h2 id="modalTitle">Mensagem Dedicada</h2>
       <p id="modalQuestion">Deseja adicionar uma mensagem dedicada por + R$ 1,00?</p>
-      
+
       <div id="modalInitialButtons">
         <button id="modalBtnYes" class="btn-modal btn-modal-yes">Sim (+ R$ 1,00)</button>
         <button id="modalBtnNo" class="btn-modal btn-modal-no">Não, Apenas Pagar</button>
