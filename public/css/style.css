@@ -290,7 +290,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 #simularBtn { background: var(--brand-blue); color: white; }
 #simularBtn:not(:disabled):hover { background-color: #0056b3; }
 
-/* --- Área do PIX Estilizada --- */
+/* Área do PIX Estilizada */
 #pixArea {
   background: white;
   color: #333;
@@ -318,7 +318,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .copia-cola-wrapper {
   margin-top: 15px;
-  position: relative; /* Para posicionar o botão se quisermos */
+  position: relative;
 }
 .copia-cola-wrapper p {
     text-align: left;
@@ -376,25 +376,150 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     background-color: #f8d7da; /* Vermelho claro */
     border: 1px solid #f5c6cb;
 }
-/* --- Fim da Área do PIX --- */
+/* Fim da Área do PIX */
 
 
-/* Estilos Para o Modal */
-.modal-overlay { /* ... (inalterado) ... */ }
-.modal-content { /* ... (inalterado) ... */ }
-.modal-close-btn { /* ... (inalterado) ... */ }
-.modal-close-btn:hover { /* ... (inalterado) ... */ }
-.modal-content h2 { /* ... (inalterado) ... */ }
-.modal-content p { /* ... (inalterado) ... */ }
-#modalInitialButtons { /* ... (inalterado) ... */ }
-#modalMessageInputArea { /* ... (inalterado) ... */ }
-#modalMessageInputArea textarea { /* ... (inalterado) ... */ }
-.btn-modal { /* ... (inalterado) ... */ }
-.btn-modal-yes, .btn-modal-confirm { /* ... (inalterado) ... */ }
-.btn-modal-yes:hover, .btn-modal-confirm:hover { /* ... (inalterado) ... */ }
-.btn-modal-no { /* ... (inalterado) ... */ }
-.btn-modal-no:hover { /* ... (inalterado) ... */ }
+/* ❗️❗️ [ESTILOS DO MODAL RESTAURADOS/CORRIGIDOS] ❗️❗️ */
+.modal-overlay {
+  position: fixed; /* Cobre a tela toda */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8); /* Fundo escuro semi-transparente */
+  display: flex; /* Habilita flexbox */
+  justify-content: center; /* Centraliza horizontalmente */
+  align-items: center; /* Centraliza verticalmente */
+  z-index: 1000; /* Garante que fique sobre tudo */
+  padding: 15px; /* Espaçamento nas bordas em telas pequenas */
+}
+
+.modal-content {
+  background-color: var(--bg-card);
+  padding: 25px 30px; /* Padding interno */
+  border-radius: 12px;
+  width: 100%; /* Ocupa largura disponível (limitado por max-width) */
+  max-width: 450px; /* Largura máxima */
+  box-shadow: 0 5px 25px rgba(0,0,0,0.6);
+  position: relative; /* Para posicionar o botão de fechar */
+  text-align: center;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1; /* Evita altura extra */
+}
+.modal-close-btn:hover {
+  color: var(--text-light);
+}
+
+.modal-content h2 { /* Título do Modal */
+  color: var(--brand-orange);
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.modal-content p { /* Texto da pergunta */
+  color: var(--text-light);
+  margin-bottom: 20px;
+  font-size: 1rem;
+}
+
+#modalInitialButtons { /* Container dos botões Sim/Não */
+  display: flex; /* Lado a lado */
+  justify-content: center; /* Centralizados */
+  gap: 10px; /* Espaço entre eles */
+  flex-wrap: wrap; /* Quebra linha se necessário */
+}
+
+#modalMessageInputArea { /* Container do Textarea e Confirmar */
+  margin-top: 15px;
+  display: flex; /* Usa flexbox */
+  flex-direction: column; /* Empilha textarea e botão */
+  align-items: stretch; /* Estica itens para largura total */
+  gap: 10px; /* Espaço entre textarea e botão */
+}
+
+#modalMessageInputArea textarea {
+  width: 100%; /* Largura total */
+  padding: 10px;
+  font-size: 1rem;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 8px;
+  color: var(--text-light);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 70px;
+  margin-bottom: 0; /* Remove margem inferior padrão */
+}
+
+.btn-modal { /* Estilo base dos botões do modal */
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex-grow: 1; /* Permite que botões cresçam */
+  flex-basis: 100px; /* Base de largura */
+}
+
+.btn-modal-yes, .btn-modal-confirm {
+  background-color: var(--brand-green);
+  color: white;
+}
+.btn-modal-yes:hover, .btn-modal-confirm:hover { background-color: #008a75; }
+
+.btn-modal-no {
+  background-color: var(--brand-red);
+  color: white;
+}
+.btn-modal-no:hover { background-color: #a71d2a; }
+
+/* Garante que o botão confirmar ocupe a largura toda quando visível */
+#modalBtnConfirm {
+    width: 100%;
+    margin-top: 5px; /* Pequeno espaço acima */
+}
+/* Fim Estilos Modal */
+
 
 /* Media Queries */
-@media (max-width: 768px) { /* ... (inalterado) ... */ }
-@media (max-width: 600px) { /* ... (inalterado) ... */ }
+@media (max-width: 768px) {
+  .container { padding: 0 10px; }
+  #results { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .video-item img { height: 120px; }
+  #selection-area { padding: 15px; }
+  .modal-content { padding: 20px 25px; }
+}
+
+@media (max-width: 600px) {
+  body { padding: 10px; }
+  h1 { font-size: 1.5rem; }
+  .welcome-message { font-size: 0.9rem; }
+  #package-selection { gap: 10px; }
+  .package-option { flex-basis: 120px; padding: 12px 15px; }
+  .package-option label { font-size: 0.9rem; }
+  .package-option label small { font-size: 0.75rem; }
+  #search-area { flex-direction: column; margin-bottom: 20px; }
+  #searchBtn { width: 100%; }
+  #results { grid-template-columns: 1fr; gap: 10px; }
+  .video-item img { height: 180px; }
+  #selection-area h2 { font-size: 1.1rem; }
+  #selected li { font-size: 0.85rem; padding: 8px 10px;}
+  #action-buttons { display: flex; flex-direction: column; gap: 10px; }
+  #action-buttons button { width: 100%; margin: 0; }
+  .modal-content { width: 95%; padding: 15px 20px; }
+  .modal-content h2 { font-size: 1.2rem; }
+  .modal-content p { font-size: 0.95rem; margin-bottom: 15px; }
+  #modalInitialButtons { flex-direction: column; gap: 10px; } /* Empilha botões Sim/Não */
+  .btn-modal { width: 100%; }
+}
