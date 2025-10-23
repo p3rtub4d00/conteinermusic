@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3000;
 
 // 🔹 Configuração do Mercado Pago
 const mpClient = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN // ❗️ USE SUA CHAVE DE PRODUÇÃO
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN // ❗️ USE SUA CHAVE DE PRODUÇÃO AQUI (via Render Env Vars)
 });
 
 // Armazenamento temporário de pagamentos pendentes.
@@ -28,13 +28,13 @@ const pendingPayments = {};
 let dailyRevenue = 0.0;
 let inactivityListNames = [];
 let inactivityListIDs = [];
-const INACTIVITY_TIMEOUT = 5000; 
+const INACTIVITY_TIMEOUT = 5000;
 let inactivityTimer = null;
-let isCustomerPlaying = false; 
+let isCustomerPlaying = false;
 let mainQueue = []; // { id, title, isCustomer, message? }
 let nowPlayingInfo = null; // { id, title, isCustomer, message? }
-let currentVolume = 50; 
-let isMuted = true; 
+let currentVolume = 50;
+let isMuted = true;
 let currentPromoText = "Bem-vindo ao Contêiner Music Box!";
 // 🔼🔼🔼 [FIM DAS VARIÁVEIS] 🔼🔼🔼
 
@@ -62,7 +62,7 @@ async function fetchVideoIdByName(name) {
 function broadcastPlayerState() {
   const state = {
     nowPlaying: nowPlayingInfo,
-    queue: mainQueue 
+    queue: mainQueue
   };
   io.emit('updatePlayerState', state);
 }
@@ -70,46 +70,46 @@ function broadcastPlayerState() {
 function playNextInQueue() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
-  
+
   if (mainQueue.length > 0) {
-    nowPlayingInfo = mainQueue.shift(); 
+    nowPlayingInfo = mainQueue.shift();
     isCustomerPlaying = nowPlayingInfo.isCustomer;
-    
+
     console.log(`Servidor enviando comando para tocar: ${nowPlayingInfo.title}`);
-    io.emit('player:playVideo', { 
-      videoId: nowPlayingInfo.id, 
+    io.emit('player:playVideo', {
+      videoId: nowPlayingInfo.id,
       title: nowPlayingInfo.title,
-      message: nowPlayingInfo.message 
+      message: nowPlayingInfo.message
     });
-    
+
   } else {
     nowPlayingInfo = null;
     isCustomerPlaying = false;
     startInactivityTimer();
   }
-  
+
   broadcastPlayerState();
 }
 
 function startInactivityTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
-  
-  if (nowPlayingInfo) return; 
+
+  if (nowPlayingInfo) return;
 
   console.log(`Iniciando timer de inatividade de ${INACTIVITY_TIMEOUT / 1000}s...`);
 
   inactivityTimer = setTimeout(() => {
     if (!isCustomerPlaying && inactivityListIDs.length > 0) {
       console.log('Inatividade detectada. Tocando lista de inatividade.');
-      
+
       mainQueue = inactivityListIDs.map(id => ({
         id: id,
         title: '(Música da Casa)',
         isCustomer: false,
-        message: null 
+        message: null
       }));
-      
+
       playNextInQueue();
     }
   }, INACTIVITY_TIMEOUT);
@@ -117,14 +117,14 @@ function startInactivityTimer() {
 // 🔼🔼🔼 [FIM DAS NOVAS FUNÇÕES DE CONTROLE] 🔼🔼🔼
 
 
-// 🔹 [ESSA ROTA ESTAVA FALTANDO] Endpoint para buscar músicas no YouTube (Cliente)
+// 🔹 Endpoint para buscar músicas no YouTube (Cliente)
 app.get("/search", async (req, res) => {
   try {
     const query = req.query.q;
     if (!query) return res.status(400).json({ error: "Consulta inválida" });
 
     const result = await youtubeSearchApi.GetListByKeyword(query, false, 6);
-    
+
     const items = result.items
       .filter(item => item.id && item.title)
       .map(item => ({
@@ -136,7 +136,7 @@ app.get("/search", async (req, res) => {
 
     res.json({ ok: true, results: items });
   } catch (err) {
-    console.error("Erro ao buscar vídeos:", err.message); 
+    console.error("Erro ao buscar vídeos:", err.message);
     res.status(500).json({ ok: false, error: "Erro ao buscar vídeos" });
   }
 });
@@ -144,29 +144,29 @@ app.get("/search", async (req, res) => {
 // 🔹 Endpoint para criar pagamento PIX
 app.post("/create-payment", async (req, res) => {
   try {
-    const { videos, amount, description, message } = req.body; 
-    
+    const { videos, amount, description, message } = req.body;
+
     if (!videos || videos.length === 0 || !amount || !description) {
       return res.status(400).json({ ok: false, error: "Dados inválidos para pagamento." });
     }
 
-    // ❗️❗️ USE UMA URL HTTPS PÚBLICA VÁLIDA AQUI ❗️❗️
-    const notification_url = "https://SEU_DOMINIO_PUBLICO.com/webhook"; 
-    
+    // ❗️❗️ URL ATUALIZADA PARA SEU SERVIÇO RENDER ❗️❗️
+    const notification_url = "https://conteinermusic.onrender.com/webhook";
+
     const payment = new Payment(mpClient);
     const result = await payment.create({
       body: {
-        transaction_amount: Number(amount), 
-        description: description,        
+        transaction_amount: Number(amount),
+        description: description,
         payment_method_id: "pix",
-        payer: { email: "test_user_123456@testuser.com" }, // E-mail para teste
+        payer: { email: "test_user_123456@testuser.com" }, // E-mail para teste (Pode precisar mudar para produção)
         notification_url: notification_url
       }
     });
 
     const qrData = result.point_of_interaction.transaction_data;
 
-    pendingPayments[result.id] = { videos: videos, amount: Number(amount), message: message }; 
+    pendingPayments[result.id] = { videos: videos, amount: Number(amount), message: message };
     console.log(`Pagamento ${result.id} (${description}) criado, aguardando webhook...`);
 
     res.json({
@@ -176,7 +176,7 @@ app.post("/create-payment", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Erro ao criar pagamento PIX:", err.message); 
+    console.error("Erro ao criar pagamento PIX:", err.message);
     const errorMessage = err.cause?.error?.message || err.message || "Falha ao gerar pagamento";
     res.status(500).json({ ok: false, error: errorMessage });
   }
@@ -185,7 +185,7 @@ app.post("/create-payment", async (req, res) => {
 // 🔹 Webhook para receber confirmação de pagamento
 app.post("/webhook", async (req, res) => {
   console.log("Webhook recebido!");
-  
+
   try {
     const notification = req.body;
 
@@ -198,41 +198,40 @@ app.post("/webhook", async (req, res) => {
         console.log(`Pagamento ${paymentId} APROVADO!`);
 
         const order = pendingPayments[paymentId];
-        
+
         dailyRevenue += order.amount;
-        io.emit('admin:updateRevenue', dailyRevenue); 
-        
+        io.emit('admin:updateRevenue', dailyRevenue);
+
         isCustomerPlaying = true;
-        if (inactivityTimer) clearTimeout(inactivityTimer); 
+        if (inactivityTimer) clearTimeout(inactivityTimer);
         inactivityTimer = null;
 
-        const customerVideos = order.videos.map(v => ({ 
-          ...v, 
+        const customerVideos = order.videos.map(v => ({
+          ...v,
           isCustomer: true,
-          message: order.message 
+          message: order.message
         }));
-        
+
         if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
           mainQueue = [...customerVideos, ...mainQueue];
-          playNextInQueue(); 
+          playNextInQueue();
         } else {
           mainQueue.push(...customerVideos);
-          if (!nowPlayingInfo) playNextInQueue(); 
-          else broadcastPlayerState(); 
+          if (!nowPlayingInfo) playNextInQueue();
+          else broadcastPlayerState();
         }
 
         delete pendingPayments[paymentId];
-      
+
       } else {
-        console.log(`Status do pagamento: ${paymentDetails.status}`);
+        console.log(`Status do pagamento ${paymentId}: ${paymentDetails.status}`);
       }
     }
-    res.sendStatus(200);
+    res.sendStatus(200); // Responde OK para o Mercado Pago
 
-  } catch (err)
- {
+  } catch (err) {
     console.error("Erro no webhook:", err.message);
-    res.sendStatus(500);
+    res.sendStatus(500); // Informa erro, mas MP pode tentar de novo
   }
 });
 
@@ -240,44 +239,43 @@ app.post("/webhook", async (req, res) => {
 // 🔹 Comunicação via socket.io
 io.on("connection", (socket) => {
   console.log("Cliente conectado:", socket.id);
-  
+
   // Envia estado inicial
   socket.emit('updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
   socket.emit('player:updatePromoText', currentPromoText);
 
   // --- Lógica de Simulação (Cliente) ---
-  socket.on('simulatePlay', ({ videos, message }) => { 
+  socket.on('simulatePlay', ({ videos, message }) => {
     if (videos && videos.length > 0) {
       console.log(`[SIMULAÇÃO] Recebido pedido de cliente.`);
-      
+
       isCustomerPlaying = true;
       if (inactivityTimer) clearTimeout(inactivityTimer);
       inactivityTimer = null;
 
-      const customerVideos = videos.map(v => ({ 
-          ...v, 
+      const customerVideos = videos.map(v => ({
+          ...v,
           isCustomer: true,
-          message: message 
+          message: message
       }));
 
       if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
         mainQueue = [...customerVideos, ...mainQueue];
-        playNextInQueue(); 
+        playNextInQueue();
       } else {
         mainQueue.push(...customerVideos);
-        if (!nowPlayingInfo) playNextInQueue(); 
-        else broadcastPlayerState(); 
+        if (!nowPlayingInfo) playNextInQueue();
+        else broadcastPlayerState();
       }
     }
   });
-  
+
   // --- Eventos do Player (TV) ---
   socket.on('player:ready', () => {
     console.log(`Player (TV) está pronto: ${socket.id}`);
     socket.emit('player:setInitialState', { volume: currentVolume, isMuted: isMuted });
     socket.emit('player:updatePromoText', currentPromoText);
-    
-    // Só inicia o timer se o servidor não achar que algo já devia estar tocando
+
     if (!nowPlayingInfo) {
       startInactivityTimer();
     }
@@ -285,7 +283,7 @@ io.on("connection", (socket) => {
 
   socket.on('player:videoEnded', () => {
     console.log('Player informa: vídeo terminou.');
-    playNextInQueue(); 
+    playNextInQueue();
   });
 
 
@@ -295,18 +293,18 @@ io.on("connection", (socket) => {
     socket.emit('admin:updateRevenue', dailyRevenue);
     socket.emit('admin:updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
     socket.emit('admin:updateVolume', { volume: currentVolume, isMuted: isMuted });
-    socket.emit('admin:loadPromoText', currentPromoText); 
+    socket.emit('admin:loadPromoText', currentPromoText);
   });
-  
+
   socket.on('admin:saveInactivityList', async (nameArray) => {
     console.log('Admin salvou a lista de nomes:', nameArray);
     inactivityListNames = nameArray;
-    
+
     const idPromises = nameArray.map(name => fetchVideoIdByName(name));
     inactivityListIDs = (await Promise.all(idPromises)).filter(id => id !== null);
-    
+
     console.log('Lista de IDs de inatividade salva:', inactivityListIDs);
-    
+
     if (!isCustomerPlaying && !nowPlayingInfo) {
       startInactivityTimer();
     }
@@ -316,8 +314,8 @@ io.on("connection", (socket) => {
     try {
       if (!query) return;
       console.log(`Admin buscando por: "${query}"`);
-      const result = await youtubeSearchApi.GetListByKeyword(query, false, 5); 
-      
+      const result = await youtubeSearchApi.GetListByKeyword(query, false, 5);
+
       const items = result.items
         .filter(item => item.id && item.title)
         .map(item => ({
@@ -325,7 +323,7 @@ io.on("connection", (socket) => {
           title: item.title,
           channel: item.channel?.name ?? 'Indefinido'
         }));
-      
+
       socket.emit('admin:searchResults', items);
 
     } catch (err) {
@@ -337,7 +335,7 @@ io.on("connection", (socket) => {
   socket.on('admin:addVideo', ({ videoId, videoTitle }) => {
     if (videoId) {
       console.log(`Admin adicionou um vídeo: ${videoTitle}`);
-      
+
       const adminVideo = { id: videoId, title: videoTitle, isCustomer: false, message: null };
 
       if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
@@ -350,32 +348,32 @@ io.on("connection", (socket) => {
       }
     }
   });
-  
+
   socket.on('admin:setPromoText', (text) => {
-    currentPromoText = text || ""; 
+    currentPromoText = text || "";
     console.log(`Admin definiu o texto promocional para: "${currentPromoText}"`);
-    io.emit('player:updatePromoText', currentPromoText); 
-    io.emit('admin:loadPromoText', currentPromoText); 
+    io.emit('player:updatePromoText', currentPromoText);
+    io.emit('admin:loadPromoText', currentPromoText);
   });
-  
+
   // --- Controles do Admin ---
-  
+
   socket.on('admin:controlSkip', () => {
     console.log('Admin pulou a música.');
-    playNextInQueue(); 
+    playNextInQueue();
   });
 
   socket.on('admin:controlPause', () => {
     console.log('Admin pausou/tocou a música.');
-    io.emit('player:pause'); 
+    io.emit('player:pause');
   });
-  
+
   socket.on('admin:controlVolume', ({ volume }) => {
     currentVolume = parseInt(volume, 10);
     isMuted = (currentVolume === 0);
-    
+
     console.log(`Admin definiu o volume para: ${currentVolume} (Mudo: ${isMuted})`);
-    
+
     io.emit('admin:updateVolume', { volume: currentVolume, isMuted: isMuted });
     io.emit('player:setVolume', { volume: currentVolume, isMuted: isMuted });
   });
@@ -389,5 +387,5 @@ io.on("connection", (socket) => {
 
 // 🔹 Iniciar servidor
 server.listen(PORT, () => {
-  console.log(`🔥 Servidor rodando em http://localhost:${PORT}`);
+  console.log(`🔥 Servidor rodando na porta ${PORT}`); // Render define a porta
 });
