@@ -233,14 +233,12 @@ async function proceedToPayment() {
   if(pagarBtn) pagarBtn.disabled = true;
   if(simularBtn) simularBtn.disabled = true;
 
-  // ❗️❗️ [VERIFICAÇÃO ADICIONADA AQUI] ❗️❗️
-  // Verifica se a conexão Socket.IO já estabeleceu um ID
-  if (!socket || !socket.id) { // Verifica 'socket' e 'socket.id'
+  // ❗️❗️ [VERIFICAÇÃO DE SOCKET.ID] ❗️❗️
+  if (!socket || !socket.id) {
       console.error("[main.js] Erro: socket.id ainda não está definido. Conexão não estabelecida?");
       alert("Erro de conexão com o servidor. Por favor, aguarde alguns segundos e tente novamente.");
-      // Reabilita os botões para permitir nova tentativa
-      updatePaymentButtonText();
-      return; // Interrompe a função
+      updatePaymentButtonText(); // Reabilita botões
+      return; // Interrompe
   }
   // ❗️❗️ [FIM DA VERIFICAÇÃO] ❗️❗️
 
@@ -269,8 +267,8 @@ async function proceedToPayment() {
 
       // Mostra a área do PIX
       if (pixArea) pixArea.style.display = 'block';
-      // const qrCodeImg = document.getElementById('qrCode'); // Já declarado no topo
-      // const copiaColaText = document.getElementById('copiaCola'); // Já declarado no topo
+      // const qrCodeImg = document.getElementById('qrCode'); // Já declarado
+      // const copiaColaText = document.getElementById('copiaCola'); // Já declarado
 
       // Preenche os dados do PIX
       if(qrCodeImg) qrCodeImg.src = `data:image/png;base64,${data.qr}`;
@@ -290,8 +288,7 @@ async function proceedToPayment() {
           copyPixBtn.style.display = 'inline-block'; // Garante visibilidade
       }
 
-      // ❗️❗️ resetUI() NÃO É MAIS CHAMADO AQUI ❗️❗️
-      // A UI deve permanecer mostrando o PIX.
+      // ❗️❗️ resetUI() NÃO É CHAMADO AQUI ❗️❗️
 
       // Apenas limpa a seleção atual e desabilita botões Pagar/Simular
       selectedVideos = [];
@@ -417,7 +414,7 @@ if (copyPixBtn) {
                 copyPixBtn.disabled = true;
                 // Volta ao normal depois de um tempo
                 setTimeout(() => {
-                    // Verifica se o botão ainda existe e não foi resetado
+                    // Verifica se o botão ainda existe e não foi resetado/escondido
                     if (copyPixBtn && copyPixBtn.classList.contains('copied')) {
                         copyPixBtn.textContent = 'Copiar Código';
                         copyPixBtn.classList.remove('copied');
@@ -443,6 +440,15 @@ socket.on('connect', () => {
     console.log('[main.js] Conectado ao servidor com ID:', socket.id); // Log para confirmar conexão e ID
 });
 
+socket.on('disconnect', (reason) => {
+    console.warn('[main.js] Desconectado do servidor. Razão:', reason);
+    // Poderíamos tentar reconectar aqui se necessário: if (reason === 'io server disconnect') socket.connect();
+});
+
+socket.on('connect_error', (err) => {
+    console.error('[main.js] Erro de conexão Socket.IO:', err.message);
+});
+
 socket.on('updatePlayerState', (state) => {
   if (nowPlayingArea) {
       if (state.nowPlaying) {
@@ -456,7 +462,7 @@ socket.on('updatePlayerState', (state) => {
 
 // Listener para Confirmação de Pagamento
 socket.on('paymentConfirmed', () => {
-    console.log('[main.js] Recebido evento paymentConfirmed do servidor!');
+    console.log('[main.js] Recebido evento paymentConfirmed do servidor! Mostrando confirmação...'); // <-- LOG ADICIONADO
     if (pixArea && paymentStatusMsg) {
         // Esconde QR code e Copia/Cola
         if(qrCodeImg) qrCodeImg.style.display = 'none';
@@ -482,7 +488,7 @@ socket.on('paymentConfirmed', () => {
             resetTimeoutId = null; // Limpa o ID do timeout
         }, 3000); // 3 segundos
     } else {
-        console.error("Erro: Elementos da área PIX não encontrados para mostrar confirmação.");
+        console.error("[main.js] Erro: Elementos da área PIX não encontrados para mostrar confirmação.");
     }
 });
 
