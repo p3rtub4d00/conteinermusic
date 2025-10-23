@@ -77,13 +77,15 @@ function updateSelectedPackage() {
 
 function updatePaymentButtonText() {
     if (!pagarBtn) return;
+    // O texto inicial SEMPRE mostra o preço base do pacote
     pagarBtn.textContent = `Pagar R$ ${selectedPackage.price.toFixed(2).replace('.', ',')} (PIX)`;
+    // Habilita/Desabilita botões baseado no limite ATUAL do pacote
     const canPay = selectedVideos.length === selectedPackage.limit;
     pagarBtn.disabled = !canPay;
     if (simularBtn) simularBtn.disabled = !canPay;
 }
 
-// Função de Busca
+// Função de Busca (Com aplicação de estado visual inicial)
 async function buscarVideos() {
   if (!searchInput || !resultsDiv) return;
 
@@ -91,7 +93,7 @@ async function buscarVideos() {
   if (!q) return alert('Digite algo para buscar!');
 
   resultsDiv.innerHTML = '<p>Buscando...</p>';
-  if (pixArea) pixArea.style.display = 'none'; // Esconde PIX se estava visível
+  if (pixArea) pixArea.style.display = 'none'; // Esconde PIX anterior
 
   try {
       const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
@@ -103,27 +105,27 @@ async function buscarVideos() {
         return;
       }
 
-      if (!data.results || data.results.length === 0) {
+      if (!data.results || data.results.length === 0) { // Verifica se results existe
          resultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
          return;
       }
 
+      // Verifica IDs já selecionados ANTES de gerar o HTML
       const selectedIds = selectedVideos.map(v => v.id);
 
       resultsDiv.innerHTML = data.results
         .map( v => {
+          // Determina estado inicial baseado na lista selectedVideos
           const isSelected = selectedIds.includes(v.id);
           const buttonText = isSelected ? 'Selecionado ✓' : 'Selecionar';
           const buttonDisabled = isSelected ? 'disabled' : '';
           const cardClass = isSelected ? 'video-item selected-video' : 'video-item';
 
+          // Adiciona data-video-id ao div principal do card
           return `
             <div class="${cardClass}" data-video-id="${v.id}">
-              <img src="${v.thumbnail || ''}" alt="">
-              <div class="info">
-                <strong>${v.title || 'Título Indisponível'}</strong><br>
-                <small>${v.channel || 'Canal Indisponível'}</small><br>
-                <button class="select-btn" onclick="addVideo('${v.id}', '${(v.title || '').replace(/'/g, "\\'")}')" ${buttonDisabled}>
+              <img src="${v.thumbnail || ''}" alt=""> <div class="info">
+                <strong>${v.title || 'Título Indisponível'}</strong><br> <small>${v.channel || 'Canal Indisponível'}</small><br> <button class="select-btn" onclick="addVideo('${v.id}', '${(v.title || '').replace(/'/g, "\\'")}')" ${buttonDisabled}>
                   ${buttonText}
                 </button>
               </div>
@@ -137,18 +139,20 @@ async function buscarVideos() {
   }
 }
 
-// Adiciona Vídeo
+// Adiciona Vídeo (Com feedback visual)
 window.addVideo = (id, title) => {
-  if (!id || !title) return;
-  if (selectedVideos.find(v => v.id === id)) return;
+  if (!id || !title) return; // Segurança
+  if (selectedVideos.find(v => v.id === id)) return; // Já selecionado
+  // Verifica o limite do PACOTE ATUAL
   if (selectedVideos.length >= selectedPackage.limit) {
     alert(`Limite máximo de ${selectedPackage.limit} músicas atingido!`);
     return;
   }
 
   selectedVideos.push({ id, title });
-  atualizarLista();
+  atualizarLista(); // Atualiza a lista lateral e os botões de ação
 
+  // Aplica feedback visual no card que foi clicado
   if (resultsDiv) {
       const card = resultsDiv.querySelector(`.video-item[data-video-id="${id}"]`);
       if (card) {
@@ -162,7 +166,7 @@ window.addVideo = (id, title) => {
   }
 };
 
-// Atualiza a lista lateral
+// Atualiza a lista lateral e os botões de ação
 function atualizarLista() {
   if (selectedList) {
       selectedList.innerHTML = selectedVideos
@@ -173,11 +177,12 @@ function atualizarLista() {
   updatePaymentButtonText(); // Atualiza estado dos botões Pagar/Simular
 }
 
-// Remove Vídeo
+// Remove Vídeo (Com feedback visual)
 window.removerVideo = id => {
   selectedVideos = selectedVideos.filter(v => v.id !== id);
-  atualizarLista();
+  atualizarLista(); // Atualiza lista lateral e botões
 
+  // Remove feedback visual do card correspondente (se ainda estiver na tela)
   if (resultsDiv) {
       const card = resultsDiv.querySelector(`.video-item[data-video-id="${id}"]`);
        if (card) {
@@ -213,6 +218,7 @@ function resetUI() {
       copyPixBtn.textContent = 'Copiar Código';
       copyPixBtn.classList.remove('copied');
       copyPixBtn.disabled = false;
+      copyPixBtn.style.display = 'inline-block'; // Garante visibilidade
   }
   // Cancela qualquer timeout de reset pendente
   if(resetTimeoutId) {
@@ -227,6 +233,17 @@ async function proceedToPayment() {
   if(pagarBtn) pagarBtn.disabled = true;
   if(simularBtn) simularBtn.disabled = true;
 
+  // ❗️❗️ [VERIFICAÇÃO ADICIONADA AQUI] ❗️❗️
+  // Verifica se a conexão Socket.IO já estabeleceu um ID
+  if (!socket || !socket.id) { // Verifica 'socket' e 'socket.id'
+      console.error("[main.js] Erro: socket.id ainda não está definido. Conexão não estabelecida?");
+      alert("Erro de conexão com o servidor. Por favor, aguarde alguns segundos e tente novamente.");
+      // Reabilita os botões para permitir nova tentativa
+      updatePaymentButtonText();
+      return; // Interrompe a função
+  }
+  // ❗️❗️ [FIM DA VERIFICAÇÃO] ❗️❗️
+
   const videos = selectedVideos;
 
   console.log("[main.js] Enviando para pagamento:", { videos, amount: finalAmount, description: finalDescription, message: finalMessage, socketId: socket.id });
@@ -240,32 +257,46 @@ async function proceedToPayment() {
           amount: finalAmount,
           description: finalDescription,
           message: finalMessage,
-          socketId: socket.id // Envia o ID do socket
+          socketId: socket.id // Envia o ID do socket (agora verificado)
         })
       });
 
       const data = await res.json();
 
-      if (!res.ok || !data.ok) {
+      if (!res.ok || !data.ok) { // Verifica status da resposta E 'ok' no JSON
         throw new Error(data.error || `Erro ${res.status}: ${res.statusText}`);
       }
 
-      // Mostra a área do PIX (já no estado resetado pelo resetUI anterior, se houve)
-      if(pixTitle) pixTitle.textContent = "Faça o PIX";
-      if(qrCodeImg) { qrCodeImg.src = `data:image/png;base64,${data.qr}`; qrCodeImg.style.display = 'block'; }
+      // Mostra a área do PIX
+      if (pixArea) pixArea.style.display = 'block';
+      // const qrCodeImg = document.getElementById('qrCode'); // Já declarado no topo
+      // const copiaColaText = document.getElementById('copiaCola'); // Já declarado no topo
+
+      // Preenche os dados do PIX
+      if(qrCodeImg) qrCodeImg.src = `data:image/png;base64,${data.qr}`;
       if(copiaColaText) copiaColaText.value = data.copiaCola;
-      if(copyPixBtn) { // Reseta botão copiar
+
+      // Garante que elementos corretos estão visíveis
+      if(pixTitle) pixTitle.textContent = "Faça o PIX";
+      if(qrCodeImg) qrCodeImg.style.display = 'block';
+      if(copiaColaWrapper) copiaColaWrapper.style.display = 'block';
+      if(paymentStatusMsg) paymentStatusMsg.style.display = 'none'; // Esconde msg de status
+
+      // Reseta botão copiar
+      if(copyPixBtn) {
           copyPixBtn.textContent = 'Copiar Código';
           copyPixBtn.classList.remove('copied');
           copyPixBtn.disabled = false;
+          copyPixBtn.style.display = 'inline-block'; // Garante visibilidade
       }
-      if(copiaColaWrapper) copiaColaWrapper.style.display = 'block';
-      if(paymentStatusMsg) paymentStatusMsg.style.display = 'none'; // Esconde msg de status
-      if (pixArea) pixArea.style.display = 'block'; // Mostra a área
+
+      // ❗️❗️ resetUI() NÃO É MAIS CHAMADO AQUI ❗️❗️
+      // A UI deve permanecer mostrando o PIX.
 
       // Apenas limpa a seleção atual e desabilita botões Pagar/Simular
       selectedVideos = [];
       atualizarLista();
+
 
   } catch (error) {
        console.error("[main.js] Erro detalhado ao gerar pagamento:", error);
@@ -298,12 +329,13 @@ if (pagarBtn) {
       if (selectedVideos.length !== selectedPackage.limit) return;
       if (!messageModal) return console.error("Modal não encontrado!");
 
+      // Reseta estado do modal
       if(modalInitialButtons) modalInitialButtons.style.display = 'flex';
       if(modalMessageInputArea) modalMessageInputArea.style.display = 'none';
       if(modalMessageText) modalMessageText.value = '';
       finalMessage = null;
-      finalAmount = selectedPackage.price;
-      finalDescription = selectedPackage.description;
+      finalAmount = selectedPackage.price; // Valor base do pacote
+      finalDescription = selectedPackage.description; // Descrição base
 
       messageModal.style.display = 'flex';
     });
@@ -314,7 +346,7 @@ if (pagarBtn) {
 if (modalBtnNo) {
     modalBtnNo.addEventListener('click', () => {
       if(messageModal) messageModal.style.display = 'none';
-      proceedToPayment();
+      proceedToPayment(); // Paga com valor e descrição base
     });
 } else { console.error("Botão modalBtnNo não encontrado!"); }
 
@@ -322,8 +354,8 @@ if (modalBtnYes) {
     modalBtnYes.addEventListener('click', () => {
       if(modalInitialButtons) modalInitialButtons.style.display = 'none';
       if(modalMessageInputArea) modalMessageInputArea.style.display = 'block';
-      finalAmount = selectedPackage.price + MESSAGE_COST;
-      finalDescription = selectedPackage.description + " + Mensagem";
+      finalAmount = selectedPackage.price + MESSAGE_COST; // Adiciona custo da msg
+      finalDescription = selectedPackage.description + " + Mensagem"; // Adiciona na descrição
       if(modalBtnConfirm) modalBtnConfirm.textContent = `Confirmar e Pagar R$ ${finalAmount.toFixed(2).replace('.', ',')}`;
       if(modalMessageText) modalMessageText.focus();
     });
@@ -331,9 +363,9 @@ if (modalBtnYes) {
 
 if (modalBtnConfirm) {
     modalBtnConfirm.addEventListener('click', () => {
-      if(modalMessageText) finalMessage = modalMessageText.value.trim();
+      if(modalMessageText) finalMessage = modalMessageText.value.trim(); // Pega a msg
       if(messageModal) messageModal.style.display = 'none';
-      proceedToPayment();
+      proceedToPayment(); // Paga com valor e descrição atualizados + msg
     });
 } else { console.error("Botão modalBtnConfirm não encontrado!"); }
 
@@ -345,13 +377,14 @@ if (modalCloseBtn) {
 
 if (messageModal) {
     messageModal.addEventListener('click', (e) => {
+      // Fecha se clicar no overlay (fundo escuro)
       if (e.target === messageModal) {
         messageModal.style.display = 'none';
       }
     });
 } else { console.error("Modal messageModal não encontrado!"); }
 
-// Listener de Simulação (Chama resetUI)
+// Listener de Simulação (Chama resetUI aqui)
 if (simularBtn) {
     simularBtn.addEventListener('click', () => {
       const videos = selectedVideos;
@@ -376,23 +409,27 @@ if (copyPixBtn) {
         copiaColaText.setSelectionRange(0, 99999); // Para mobile
 
         try {
+            // Usa a API de Clipboard moderna
             navigator.clipboard.writeText(copiaColaText.value).then(() => {
                 console.log('Código PIX copiado!');
                 copyPixBtn.textContent = 'Copiado ✓';
                 copyPixBtn.classList.add('copied');
                 copyPixBtn.disabled = true;
+                // Volta ao normal depois de um tempo
                 setTimeout(() => {
-                    copyPixBtn.textContent = 'Copiar Código';
-                    copyPixBtn.classList.remove('copied');
-                    copyPixBtn.disabled = false;
-                }, 2000);
+                    // Verifica se o botão ainda existe e não foi resetado
+                    if (copyPixBtn && copyPixBtn.classList.contains('copied')) {
+                        copyPixBtn.textContent = 'Copiar Código';
+                        copyPixBtn.classList.remove('copied');
+                        copyPixBtn.disabled = false;
+                    }
+                }, 2000); // 2 segundos
             }, (err) => {
                 console.error('Falha ao copiar (API moderna): ', err);
                 alert('Não foi possível copiar o código. Tente manualmente.');
             });
         } catch (err) {
             console.error('Falha ao copiar (Catch): ', err);
-            // Fallback (menos confiável) - Removido por simplicidade, focar na API moderna
              alert('Não foi possível copiar o código automaticamente. Por favor, copie manualmente.');
         }
     });
@@ -402,6 +439,10 @@ if (copyPixBtn) {
 
 
 // --- Listeners Socket.io ---
+socket.on('connect', () => {
+    console.log('[main.js] Conectado ao servidor com ID:', socket.id); // Log para confirmar conexão e ID
+});
+
 socket.on('updatePlayerState', (state) => {
   if (nowPlayingArea) {
       if (state.nowPlaying) {
@@ -447,6 +488,7 @@ socket.on('paymentConfirmed', () => {
 
 
 // --- Inicialização ---
+// Garante que a UI inicial reflete o pacote padrão ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[main.js] DOM carregado. Inicializando UI.");
     updateSelectedPackage();
