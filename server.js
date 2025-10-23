@@ -47,7 +47,7 @@ async function fetchVideoIdByName(name) {
   if (!name) return null;
   try {
     // Adiciona um pequeno delay para evitar rate limiting da API de busca (se necessário)
-    // await new Promise(resolve => setTimeout(resolve, 100)); 
+    // await new Promise(resolve => setTimeout(resolve, 100));
     const result = await youtubeSearchApi.GetListByKeyword(name, false, 1);
     if (result && result.items && result.items.length > 0 && result.items[0].id) {
       console.log(`Busca por "${name}" encontrou ID: ${result.items[0].id}`);
@@ -76,7 +76,10 @@ function broadcastPlayerState() {
     queue: mainQueue // Envia a fila inteira
   };
   io.emit('updatePlayerState', state); // Envia para clientes e admins
-  console.log('[Server] Estado do player transmitido:', state);
+  console.log('[Server] Estado do player transmitido:', {
+      nowPlaying: state.nowPlaying ? state.nowPlaying.title : 'Nenhum',
+      queueLength: state.queue.length
+  });
 }
 
 /**
@@ -121,9 +124,9 @@ function startInactivityTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
 
-  // Só inicia o timer se nada estiver tocando
-  if (nowPlayingInfo) {
-      console.log('[Server] Algo está tocando, não iniciando timer de inatividade.');
+  // Só inicia o timer se nada estiver tocando E a fila estiver vazia
+  if (nowPlayingInfo || mainQueue.length > 0) {
+      console.log('[Server] Algo está tocando ou na fila, não iniciando timer de inatividade.');
       return;
   }
 
@@ -152,6 +155,8 @@ function startInactivityTimer() {
       playNextInQueue();
     } else {
         console.log('[Server] Timer de inatividade expirou, mas a lista está vazia.');
+        // Garante que o estado seja transmitido mesmo se nada tocar
+        broadcastPlayerState();
     }
   }, INACTIVITY_TIMEOUT);
 }
@@ -201,19 +206,22 @@ app.post("/create-payment", async (req, res) => {
         transaction_amount: Number(amount),
         description: description,
         payment_method_id: "pix",
-        payer: { email: "pagador@email.com" }, // Placeholder obrigatório
+        payer: { email: "pagador@email.com" }, // Placeholder obrigatório para produção PIX
         notification_url: notification_url
     };
 
     const payment = new Payment(mpClient);
     const result = await payment.create({ body: payment_data });
 
-    if (!result.point_of_interaction?.transaction_data?.qr_code_base64) {
+    // Validação mais robusta da resposta do MP
+    if (!result?.point_of_interaction?.transaction_data?.qr_code_base64) {
+        console.error('[Server] Resposta do Mercado Pago inválida:', result);
         throw new Error('Resposta do Mercado Pago inválida - QR Code não encontrado.');
     }
 
     const qrData = result.point_of_interaction.transaction_data;
 
+    // Salva os vídeos, valor e mensagem para o webhook
     pendingPayments[result.id] = { videos: videos, amount: Number(amount), message: message };
     console.log(`[Server] Pagamento ${result.id} (${description}) criado, aguardando webhook...`);
 
@@ -240,34 +248,46 @@ app.post("/create-payment", async (req, res) => {
     }
 
     console.error("[Server] Erro específico do MP:", specificError);
+    // Usa o status code do erro do MP, ou 500 como padrão
     res.status(err.statusCode || 500).json({ ok: false, error: specificError });
   }
 });
 
 
-// 🔹 Webhook para receber confirmação de pagamento
+// 🔹 Webhook para receber confirmação de pagamento (Lógica Corrigida)
 app.post("/webhook", async (req, res) => {
   console.log("[Server] Webhook recebido!");
-  console.log("[Server] Corpo do Webhook:", req.body); // Log para depuração
+  console.log("[Server] Corpo do Webhook:", req.body);
 
   try {
     const notification = req.body;
+    let paymentId = null;
 
-    // Validação básica do corpo da notificação
-    if (!notification || notification.type !== 'payment' || !notification.data?.id) {
-        console.warn('[Server] Notificação de webhook inválida ou não é de pagamento.');
-        return res.sendStatus(400); // Bad Request
+    // --- Identifica o ID do pagamento (Aceita ambos formatos) ---
+    if (notification?.type === 'payment' && notification.data?.id) {
+        paymentId = notification.data.id;
+        console.log(`[Server] Notificação detalhada recebida para ID: ${paymentId}`);
+    } else if (notification?.topic === 'payment' && notification.resource) {
+        const urlParts = notification.resource.split('/');
+        paymentId = urlParts[urlParts.length - 1];
+        console.log(`[Server] Notificação simples recebida para ID: ${paymentId}`);
+    } else if (notification?.action?.startsWith('payment.') && notification.data?.id) {
+         paymentId = notification.data.id;
+         console.log(`[Server] Notificação de ação recebida para ID: ${paymentId}`);
     }
 
-    const paymentId = notification.data.id;
-    console.log(`[Server] Notificação de pagamento recebida para ID: ${paymentId}`);
+    if (!paymentId) {
+        console.warn('[Server] Notificação de webhook não reconhecida ou sem ID de pagamento.');
+        return res.sendStatus(200); // Responde OK mesmo assim
+    }
 
-    // Busca os detalhes do pagamento no Mercado Pago
+    // --- Busca os detalhes do pagamento SEMPRE ---
+    console.log(`[Server] Buscando detalhes do pagamento ${paymentId} no Mercado Pago...`);
     const payment = new Payment(mpClient);
     const paymentDetails = await payment.get({ id: paymentId });
     console.log(`[Server] Detalhes do pagamento ${paymentId}: Status ${paymentDetails.status}`);
 
-    // Verifica se o pagamento foi aprovado E se estava na nossa lista de pendentes
+    // --- Processa APENAS se estiver Aprovado E Pendente na nossa lista ---
     if (paymentDetails.status === 'approved' && pendingPayments[paymentId]) {
       console.log(`[Server] Pagamento ${paymentId} APROVADO! Processando pedido.`);
 
@@ -275,55 +295,54 @@ app.post("/webhook", async (req, res) => {
 
       // 1. Atualiza o faturamento
       dailyRevenue += order.amount;
-      io.emit('admin:updateRevenue', dailyRevenue); // Envia para o admin
+      io.emit('admin:updateRevenue', dailyRevenue);
 
-      // 2. Define que o cliente tem prioridade e para o timer de inatividade
+      // 2. Define que o cliente tem prioridade e para o timer
       isCustomerPlaying = true;
       if (inactivityTimer) clearTimeout(inactivityTimer);
       inactivityTimer = null;
 
-      // 3. Prepara os vídeos do cliente para adicionar à fila
+      // 3. Prepara os vídeos do cliente
       const customerVideos = order.videos.map(v => ({
         ...v,
         isCustomer: true,
-        message: order.message // Adiciona a mensagem do pedido
+        message: order.message
       }));
 
       // 4. Adiciona à fila e decide se toca agora
-      // Se a lista da casa estiver tocando, interrompe e coloca o cliente primeiro
       if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
         console.log('[Server] Música da casa interrompida para tocar cliente.');
-        mainQueue = [...customerVideos, ...mainQueue]; // Cliente primeiro, resto da fila depois
-        playNextInQueue(); // Pula a música da casa e toca a do cliente
+        mainQueue = [...customerVideos, ...mainQueue];
+        playNextInQueue();
       } else {
-        // Se não, só adiciona no fim da fila
         mainQueue.push(...customerVideos);
         if (!nowPlayingInfo) {
             console.log('[Server] Player ocioso, iniciando fila do cliente.');
-            playNextInQueue(); // Começa a tocar se nada estiver tocando
+            playNextInQueue();
         } else {
             console.log('[Server] Player ocupado, adicionando cliente ao fim da fila.');
-            broadcastPlayerState(); // Apenas atualiza a UI da fila
+            broadcastPlayerState();
         }
       }
 
-      // 5. Remove da lista de pendentes após processar
+      // 5. Remove da lista de pendentes APÓS processar
       delete pendingPayments[paymentId];
+      console.log(`[Server] Pagamento ${paymentId} processado e removido da lista de pendentes.`);
 
-    } else if (pendingPayments[paymentId]) {
-      // Pagamento não aprovado, mas estava pendente (Ex: recusado, cancelado)
-      console.log(`[Server] Pagamento ${paymentId} não foi aprovado (Status: ${paymentDetails.status}). Removendo da lista de pendentes.`);
-      delete pendingPayments[paymentId]; // Limpa para evitar processamento futuro
-    } else {
-        // Recebeu notificação de um pagamento que não conhecemos (pode acontecer)
-        console.log(`[Server] Notificação recebida para pagamento ${paymentId} (Status: ${paymentDetails.status}) que não estava pendente.`);
+    } else if (paymentDetails.status !== 'approved' && pendingPayments[paymentId]) {
+      // Pagamento ainda não aprovado (pending, rejected, etc.)
+      console.log(`[Server] Status do pagamento ${paymentId} ainda é '${paymentDetails.status}'. Aguardando aprovação (não removendo dos pendentes).`);
+      // NÃO remove da lista pendingPayments aqui.
+    } else if (!pendingPayments[paymentId]) {
+        console.log(`[Server] Notificação recebida para pagamento ${paymentId} (Status: ${paymentDetails.status}) que não estava pendente ou já foi processado.`);
     }
 
-    res.sendStatus(200); // Responde OK para o Mercado Pago
+    // Responde 200 OK para o Mercado Pago em todos os casos válidos
+    res.sendStatus(200);
 
   } catch (err) {
     console.error("[Server] Erro CRÍTICO no processamento do webhook:", err);
-    res.sendStatus(500); // Informa erro, mas MP pode tentar de novo
+    res.sendStatus(500); // Informa erro, MP pode tentar de novo
   }
 });
 
@@ -373,10 +392,11 @@ io.on("connection", (socket) => {
   // --- Eventos do Player (TV) ---
   socket.on('player:ready', () => {
     console.log(`[Server] Player (TV) está pronto: ${socket.id}`);
+    // Envia estado inicial APENAS para este player que conectou
     socket.emit('player:setInitialState', { volume: currentVolume, isMuted: isMuted });
     socket.emit('player:updatePromoText', currentPromoText);
 
-    // Só inicia o timer se o servidor não achar que algo já devia estar tocando
+    // Só inicia o timer SE NADA estiver tocando (evita race condition)
     if (!nowPlayingInfo) {
       startInactivityTimer();
     }
@@ -391,6 +411,7 @@ io.on("connection", (socket) => {
   // --- Eventos do Painel Admin ---
   socket.on('admin:getList', () => {
     console.log(`[Server] Admin ${socket.id} pediu estado inicial.`);
+    // Envia estado atual APENAS para este admin
     socket.emit('admin:loadInactivityList', inactivityListNames);
     socket.emit('admin:updateRevenue', dailyRevenue);
     socket.emit('admin:updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
@@ -404,12 +425,12 @@ io.on("connection", (socket) => {
 
     // Busca os IDs para cada nome em paralelo
     const idPromises = inactivityListNames.map(name => fetchVideoIdByName(name));
-    // Espera todas as buscas e filtra IDs nulos (busca falhou ou não encontrou)
+    // Espera todas as buscas e filtra IDs nulos
     inactivityListIDs = (await Promise.all(idPromises)).filter(id => id !== null);
 
     console.log('[Server] Lista de IDs de inatividade salva:', inactivityListIDs);
 
-    // Se o player estiver ocioso (nada tocando), reinicia o timer para considerar a nova lista
+    // Se o player estiver ocioso, reinicia o timer para considerar a nova lista
     if (!isCustomerPlaying && !nowPlayingInfo) {
       startInactivityTimer();
     }
