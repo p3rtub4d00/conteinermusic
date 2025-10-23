@@ -256,10 +256,10 @@ app.post("/create-payment", async (req, res) => {
 });
 
 
-// 🔹 Webhook para receber confirmação de pagamento (Lógica Corrigida para ambos formatos)
+// 🔹 Webhook para receber confirmação de pagamento (Lógica Corrigida para ambos formatos + Log Emit)
 app.post("/webhook", async (req, res) => {
   console.log("[Server] Webhook recebido!");
-  console.log("[Server] Corpo do Webhook:", req.body);
+  // console.log("[Server] Corpo do Webhook:", req.body); // Descomente para depuração detalhada
 
   try {
     const notification = req.body;
@@ -273,14 +273,18 @@ app.post("/webhook", async (req, res) => {
         // Extrai o ID da URL do resource
         const urlParts = notification.resource.split('/');
         paymentId = urlParts[urlParts.length - 1];
-        console.log(`[Server] Notificação simples recebida para ID: ${paymentId}`);
+        if (!paymentId) { // Validação extra se a URL for inesperada
+             console.warn('[Server] Não foi possível extrair paymentId da URL do resource:', notification.resource);
+        } else {
+             console.log(`[Server] Notificação simples recebida para ID: ${paymentId}`);
+        }
     } else if (notification?.action?.startsWith('payment.') && notification.data?.id) {
          paymentId = notification.data.id;
          console.log(`[Server] Notificação de ação recebida para ID: ${paymentId}`);
     }
 
     if (!paymentId) {
-        console.warn('[Server] Notificação de webhook não reconhecida ou sem ID de pagamento.');
+        console.warn('[Server] Notificação de webhook não reconhecida ou sem ID de pagamento válido.');
         return res.sendStatus(200); // Responde OK mesmo assim
     }
 
@@ -300,38 +304,40 @@ app.post("/webhook", async (req, res) => {
       dailyRevenue += order.amount;
       io.emit('admin:updateRevenue', dailyRevenue);
 
-      // 2. Define que o cliente tem prioridade e para o timer
+      // 2. Define prioridade e para timer
       isCustomerPlaying = true;
       if (inactivityTimer) clearTimeout(inactivityTimer);
       inactivityTimer = null;
 
-      // 3. Prepara os vídeos do cliente
-      const customerVideos = order.videos.map(v => ({
-        ...v,
-        isCustomer: true,
-        message: order.message // Adiciona a mensagem do pedido
-      }));
+      // 3. Prepara os vídeos
+      const customerVideos = order.videos.map(v => ({ ...v, isCustomer: true, message: order.message }));
 
-      // 4. Adiciona à fila e decide se toca agora
+      // 4. Adiciona à fila / Toca
       if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
         console.log('[Server] Música da casa interrompida para tocar cliente.');
         mainQueue = [...customerVideos, ...mainQueue];
-        playNextInQueue(); // Pula a música da casa e toca a do cliente
+        playNextInQueue();
       } else {
         mainQueue.push(...customerVideos);
         if (!nowPlayingInfo) {
             console.log('[Server] Player ocioso, iniciando fila do cliente.');
-            playNextInQueue(); // Começa a tocar se nada estiver tocando
+            playNextInQueue();
         } else {
             console.log('[Server] Player ocupado, adicionando cliente ao fim da fila.');
-            broadcastPlayerState(); // Apenas atualiza a UI da fila
+            broadcastPlayerState();
         }
       }
 
       // 5. ENVIA CONFIRMAÇÃO PARA O CLIENTE ESPECÍFICO
       if (order.socketId) {
-          console.log(`[Server] Enviando confirmação de pagamento para socket ${order.socketId}`);
-          io.to(order.socketId).emit('paymentConfirmed');
+          console.log(`[Server] TENTANDO ENVIAR 'paymentConfirmed' para socket ${order.socketId}`); // <-- LOG ADICIONADO
+          const targetSocket = io.sockets.sockets.get(order.socketId); // Tenta pegar o socket
+          if (targetSocket) {
+              targetSocket.emit('paymentConfirmed'); // Envia SÓ para ele
+              console.log(`[Server] 'paymentConfirmed' EMITIDO com sucesso para ${order.socketId}.`); // <-- LOG ADICIONADO
+          } else {
+               console.warn(`[Server] Socket ${order.socketId} não encontrado. Não foi possível enviar 'paymentConfirmed'. O cliente pode ter desconectado.`); // <-- LOG ADICIONADO
+          }
       } else {
           console.warn(`[Server] Não foi possível encontrar socketId para o pagamento ${paymentId} para enviar confirmação.`);
       }
@@ -538,7 +544,7 @@ io.on("connection", (socket) => {
 
   // --- Desconexão ---
   socket.on("disconnect", (reason) => {
-    console.log(`[Server] Cliente Socket.IO desconectado: ${socket.id}. Razão: ${reason}`);
+    console.log(`[Server] Cliente Socket.IO desconectado: ${socket.id}. Razão: ${reason}`); // Log de desconexão
   });
 });
 
