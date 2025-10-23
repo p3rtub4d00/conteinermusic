@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Contêiner Music Box - Player</title> 
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: black;
+      overflow: hidden; /* Impede barras de rolagem */
+    }
+    #player {
+      width: 100%;
+      height: 100vh;
+    }
+    
+    /* ❗️ ESTILOS DA FAIXA ATUALIZADOS/ADICIONADOS ❗️ */
+    #promo-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: rgba(0, 0, 0, 0.7); 
+      color: #fff;
+      padding: 10px 0; /* Padding vertical, horizontal zerado para span ocupar tudo */
+      font-size: 1.5rem; 
+      font-family: Arial, sans-serif;
+      text-align: center; /* Centraliza se o texto for curto */
+      box-sizing: border-box;
+      z-index: 10; 
+      white-space: nowrap; /* Impede quebra de linha do span */
+      overflow: hidden; /* Esconde o span que sai da tela */
+    }
+
+    /* Span interno que conterá o texto e será animado */
+    #promo-text-content {
+        display: inline-block; /* Necessário para animação de movimento */
+        padding-left: 100%; /* Inicia fora da tela à direita */
+    }
+
+    /* Classe que ativa a animação */
+    #promo-banner.scrolling #promo-text-content {
+        /* Animação: nome, duração, tipo, repetição */
+        animation: marquee 15s linear infinite; 
+    }
+
+    /* Definição da Animação Marquee */
+    @keyframes marquee {
+      0%   { transform: translate(0, 0); } /* Começa à direita (fora da tela devido ao padding-left) */
+      100% { transform: translate(-200%, 0); } /* Termina à esquerda (fora da tela) */
+      /* O -200% move o texto inteiro + o espaço inicial */
+    }
+    /* 🔼🔼🔼 FIM DOS ESTILOS DA FAIXA 🔼🔼🔼 */
+
+  </style>
+</head>
+<body>
+  <div id="player"></div>
+
+  <div id="promo-banner">
+      <span id="promo-text-content">Bem-vindo ao Contêiner Music Box!</span>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>

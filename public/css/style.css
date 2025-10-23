@@ -1,0 +1,462 @@
+/* --- Reset Básico e Variáveis de Cor --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-dark: #1a1a1a;
+  --bg-card: #2c2c2c;
+  --text-light: #f4f4f4;
+  --text-muted: #aaa;
+  --brand-orange: #e67e22; 
+  --brand-blue: #007bff;
+  --brand-green: #00bfa5;
+  --brand-red: #dc3545; 
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-light);
+  padding: 15px; /* Reduz padding geral em telas menores */
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0; /* Remove padding extra do container */
+}
+
+/* --- Header --- */
+header {
+  text-align: center;
+  margin-bottom: 25px; /* Reduz margem */
+}
+
+#logo {
+  max-width: 150px; /* Reduz logo */
+  height: auto;
+  margin-bottom: 10px;
+}
+
+h1 {
+  color: var(--brand-orange);
+  font-size: 1.8rem; /* Reduz título */
+  font-weight: 700;
+  text-transform: uppercase; 
+}
+
+.welcome-message {
+  font-size: 1rem; /* Reduz mensagem */
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* Pacotes - Opção 2 */
+#package-selection {
+  display: flex;
+  justify-content: center;
+  gap: 15px; /* Reduz gap */
+  margin-bottom: 25px; 
+  flex-wrap: wrap; 
+}
+
+.package-option {
+  background-color: var(--bg-card);
+  padding: 15px 20px; /* Reduz padding */
+  border-radius: 10px;
+  border: 2px solid #444; 
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  flex-basis: 150px; /* Reduz base */
+  flex-grow: 1; 
+  max-width: 220px; 
+}
+
+.package-option:hover {
+  border-color: var(--text-muted); 
+  transform: translateY(-3px); 
+}
+.package-option input[type="radio"]:checked + span { color: var(--brand-orange); }
+.package-option input[type="radio"] { display: none; }
+.package-option label {
+  color: var(--text-light);
+  font-weight: 600; /* Levemente mais fino */
+  font-size: 1rem; /* Reduz fonte */
+  cursor: pointer;
+  display: block; 
+}
+.package-option label span { display: inline-block; }
+.package-option label small {
+  font-weight: 400;
+  font-size: 0.85rem; /* Reduz fonte */
+  color: var(--text-muted);
+  display: block; 
+  margin-top: 3px;
+}
+.package-option:has(input[type="radio"]:checked) {
+  border-color: var(--brand-orange); 
+  box-shadow: 0 0 10px rgba(230, 126, 34, 0.4); 
+}
+
+/* "Tocando Agora" (Cliente) */
+#now-playing-area {
+  background-color: var(--bg-card);
+  border: 1px solid var(--brand-orange);
+  padding: 12px 15px; /* Reduz padding */
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+#now-playing-area .label {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 8px; /* Reduz margem */
+  font-size: 0.9rem; /* Reduz fonte */
+}
+#nowPlayingTitle {
+  color: var(--text-light);
+  font-weight: 600; /* Levemente mais fino */
+  font-size: 1rem; /* Reduz fonte */
+}
+
+/* Conteúdo Principal (Main) */
+main { display: block; width: 100%; margin-top: 20px; }
+
+/* Área de Busca */
+#search-area { 
+  display: flex;
+  width: 100%;
+  margin-bottom: 25px; /* Reduz margem */
+  gap: 8px; /* Reduz gap */
+  flex-wrap: wrap; /* Permite quebra em telas muito pequenas */
+}
+#searchInput { 
+  flex-grow: 1;
+  padding: 12px; /* Reduz padding */
+  font-size: 1rem; /* Reduz fonte */
+  background: var(--bg-card);
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: var(--text-light);
+  min-width: 150px; /* Garante largura mínima */
+}
+#searchBtn { 
+  padding: 0 20px; /* Reduz padding */
+  font-size: 1rem; /* Reduz fonte */
+  font-weight: 600;
+  background: var(--brand-orange);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0; 
+  height: 44px; /* Ajusta altura para bater com input */
+}
+#searchBtn:hover { background-color: #d35400; }
+
+/* Wrapper dos Resultados */
+#results-wrapper { width: 100%; }
+
+/* Resultados da Busca (Grid) */
+#results { 
+  display: grid;
+  /* Ajusta minmax para telas menores */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+  gap: 15px; /* Reduz gap */
+  margin-top: 20px; 
+  width: 100%; 
+}
+.video-item { 
+  background: var(--bg-card);
+  border-radius: 10px; /* Leve ajuste */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4); /* Sombra mais sutil */
+  overflow: hidden;
+  text-align: left;
+  transition: all 0.3s ease; 
+  border: 2px solid transparent; 
+}
+.video-item:hover { transform: translateY(-3px); } /* Reduz efeito hover */
+.video-item img { 
+  width: 100%;
+  height: 140px; /* Reduz altura da imagem */
+  object-fit: cover;
+  display: block;
+}
+.video-item .info { padding: 12px; } /* Reduz padding */
+.video-item .info strong { 
+  display: block;
+  font-size: 0.95rem; /* Reduz fonte */
+  margin-bottom: 4px; /* Reduz margem */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  height: 2.3em; /* Ajuste para nova fonte */
+}
+.video-item .info small { color: var(--text-muted); font-size: 0.8rem; } /* Reduz fonte */
+.video-item .info .select-btn { 
+  width: 100%;
+  margin-top: 10px; /* Reduz margem */
+  padding: 8px; /* Reduz padding */
+  font-size: 0.9rem; /* Reduz fonte */
+  font-weight: 600;
+  background: var(--brand-orange);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.video-item .info .select-btn:hover:not(:disabled) { background-color: #d35400; }
+
+/* Feedback Visual */
+.video-item.selected-video {
+  border-color: var(--brand-green); 
+  box-shadow: 0 0 8px rgba(0, 191, 165, 0.4); 
+}
+.video-item.selected-video .select-btn {
+  background-color: var(--brand-green);
+  color: white;
+  cursor: not-allowed;
+}
+
+/* Área de Seleção */
+#selection-area { 
+  background: var(--bg-card);
+  border-radius: 10px; /* Ajuste */
+  padding: 20px; /* Reduz padding */
+  margin: 25px 0; /* Reduz margem */
+  text-align: center;
+  width: 100%; 
+}
+#selection-area h2 { 
+    color: var(--brand-orange); 
+    margin-bottom: 15px; /* Reduz margem */
+    font-size: 1.2rem; /* Reduz fonte */
+}
+#selected { 
+  list-style-type: none;
+  padding: 0;
+  max-width: 100%; /* Ocupa toda largura interna */
+  margin: 0 auto;
+  text-align: left;
+}
+#selected li { 
+  background: #3a3a3a;
+  padding: 10px 12px; /* Reduz padding */
+  margin-bottom: 6px; /* Reduz margem */
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem; /* Reduz fonte */
+}
+#selected li button { 
+  background: transparent;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 1.1rem; /* Reduz fonte */
+  padding: 0 5px;
+  transition: color 0.3s ease;
+}
+#selected li button:hover { color: #e03131; }
+
+/* Botões de Ação */
+#action-buttons { 
+  text-align: center;
+  margin-bottom: 25px; /* Reduz margem */
+  width: 100%; 
+}
+button { /* Estilo geral de botões */
+  border: none;
+  padding: 12px 25px; /* Reduz padding */
+  font-size: 1rem; /* Reduz fonte */
+  font-weight: 600; /* Levemente mais fino */
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 5px; 
+  transition: all 0.3s ease;
+}
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+#pagarBtn { background: var(--brand-green); color: white; }
+#pagarBtn:not(:disabled):hover { background-color: #008a75; }
+#simularBtn { background: var(--brand-blue); color: white; }
+#simularBtn:not(:disabled):hover { background-color: #0056b3; }
+
+/* Área do PIX */
+#pixArea { 
+  background: white;
+  color: #222;
+  padding: 15px; /* Reduz padding */
+  border-radius: 10px; /* Ajuste */
+  max-width: 350px; /* Reduz max-width */
+  margin: 20px auto; 
+  width: 100%; 
+}
+#pixArea h2 { color: #333; font-size: 1.2rem; } /* Reduz fonte */
+#pixArea img { 
+  max-width: 200px; /* Reduz QR Code */
+  height: auto;
+  margin: 10px auto; 
+  display: block; 
+}
+#pixArea textarea { 
+  width: 100%;
+  font-size: 0.9rem; /* Reduz fonte */
+  padding: 8px; /* Reduz padding */
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  resize: none;
+}
+
+/* Estilos Para o Modal */
+.modal-overlay { /* ... (inalterado) ... */ }
+.modal-content {
+  background-color: var(--bg-card);
+  padding: 25px 30px; /* Reduz padding */
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px; /* Reduz max-width */
+  box-shadow: 0 5px 25px rgba(0,0,0,0.6);
+  position: relative;
+  text-align: center;
+}
+.modal-close-btn { /* ... (inalterado) ... */ }
+.modal-close-btn:hover { /* ... (inalterado) ... */ }
+.modal-content h2 { 
+    color: var(--brand-orange); 
+    margin-top: 0; 
+    margin-bottom: 15px; 
+    font-size: 1.3rem; /* Reduz fonte */
+}
+.modal-content p { 
+    color: var(--text-light); 
+    margin-bottom: 20px; /* Reduz margem */
+    font-size: 1rem; /* Reduz fonte */
+}
+#modalInitialButtons { display: flex; justify-content: center; gap: 10px; } /* Reduz gap */
+#modalMessageInputArea { margin-top: 15px; } /* Reduz margem */
+#modalMessageInputArea textarea {
+  width: 100%;
+  padding: 10px; /* Reduz padding */
+  font-size: 1rem; /* Reduz fonte */
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 8px;
+  color: var(--text-light);
+  font-family: inherit;
+  resize: vertical;
+  min-height: 70px; /* Reduz altura */
+  margin-bottom: 10px; /* Reduz margem */
+}
+.btn-modal {
+  padding: 10px 20px; /* Reduz padding */
+  font-size: 0.95rem; /* Reduz fonte */
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.btn-modal-yes, .btn-modal-confirm { /* ... (inalterado) ... */ }
+.btn-modal-yes:hover, .btn-modal-confirm:hover { /* ... (inalterado) ... */ }
+.btn-modal-no { /* ... (inalterado) ... */ }
+.btn-modal-no:hover { /* ... (inalterado) ... */ }
+
+/* 🔽🔽🔽 [NOVAS MEDIA QUERIES] 🔽🔽🔽 */
+
+/* Ajustes para telas médias (ex: tablets verticais, celulares horizontais) */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 10px; /* Adiciona um pouco de padding lateral */
+  }
+  
+  #results {
+    /* Ajusta minmax para garantir pelo menos 2 colunas se couber */
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+  }
+
+  .video-item img {
+      height: 120px; /* Reduz mais a imagem */
+  }
+  
+  #selection-area {
+     padding: 15px;
+  }
+
+  .modal-content {
+     padding: 20px 25px;
+  }
+}
+
+/* Ajustes para telas pequenas (ex: celulares verticais) */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+  
+  h1 {
+     font-size: 1.5rem; 
+  }
+  .welcome-message {
+      font-size: 0.9rem;
+  }
+
+  #package-selection {
+     gap: 10px;
+  }
+  .package-option {
+     flex-basis: 120px; /* Permite que fiquem menores */
+     padding: 12px 15px;
+  }
+   .package-option label { font-size: 0.9rem; }
+   .package-option label small { font-size: 0.75rem; }
+
+  #search-area {
+     flex-direction: column; /* Coloca input e botão um embaixo do outro */
+     margin-bottom: 20px;
+  }
+  #searchBtn {
+      width: 100%; /* Botão ocupa largura total */
+  }
+
+  #results {
+    /* Força uma coluna */
+    grid-template-columns: 1fr; 
+    gap: 10px;
+  }
+  .video-item img {
+      height: 180px; /* Aumenta um pouco em coluna única */
+  }
+
+  #selection-area h2 { font-size: 1.1rem; }
+  #selected li { font-size: 0.85rem; padding: 8px 10px;}
+
+  #action-buttons {
+     display: flex; /* Coloca botões lado a lado */
+     flex-direction: column; /* Empilha botões verticalmente */
+     gap: 10px; /* Espaço entre botões */
+  }
+   #action-buttons button {
+      width: 100%; /* Botões ocupam largura total */
+      margin: 0; /* Remove margem lateral */
+   }
+
+  .modal-content {
+     width: 95%;
+     padding: 15px 20px;
+  }
+  .modal-content h2 { font-size: 1.2rem; }
+  .modal-content p { font-size: 0.95rem; margin-bottom: 15px; }
+  #modalInitialButtons { flex-direction: column; gap: 10px; } /* Empilha botões Sim/Não */
+  .btn-modal { width: 100%; } /* Botões do modal ocupam largura total */
+
+}
+/* 🔼🔼🔼 [FIM DAS MEDIA QUERIES] 🔼🔼🔼 */

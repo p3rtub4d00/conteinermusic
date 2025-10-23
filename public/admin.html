@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Contêiner Music Box</title>
+  <link rel="stylesheet" href="/css/admin.css"> 
+</head>
+<body>
+  
+  <div class="container">
+    <header>
+      <img src="/images/logo.png" alt="Logo" id="logo">
+      <h1>Painel Admin</h1>
+    </header>
+
+    <main>
+      <div class="column-layout">
+        <div class="column">
+          <section class="card">
+            <h2>Faturamento do Dia</h2>
+            <p class="revenue">R$ <span id="revenue">0.00</span></p>
+            <small>*O faturamento é rastreado apenas por pagamentos PIX confirmados e reinicia quando o servidor é reiniciado.</small>
+          </section>
+
+          <section class="card">
+            <h2>Controle do Player</h2>
+            <div class="player-controls">
+              <button id="pauseBtn" class="control-btn">Pausar / Tocar</button>
+              <button id="skipBtn" class="control-btn">Pular Música</button>
+            </div>
+            <div class="volume-control">
+              <label for="volumeSlider">Volume:</label>
+              <input type="range" id="volumeSlider" min="0" max="100" value="50">
+              <span id="volumeValue">50%</span>
+            </div>
+          </section>
+
+          <section class="card" id="queue-card">
+            <h2>Fila de Reprodução</h2>
+            
+            <div class="now-playing-admin">
+              <strong>Tocando Agora:</strong>
+              <span id="adminNowPlaying">Nenhuma música tocando...</span>
+              <span id="adminNowPlayingMessage" class="playing-message"></span> 
+            </div>
+            
+            <div class="queue-list-admin">
+              <strong>Próximos na Fila:</strong>
+              <ul id="adminQueueList">
+                <li>(Fila vazia)</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
+        <div class="column">
+          <section class="card">
+            <h2>Adicionar Música na Fila</h2>
+            <p>Busque por nome ou artista e clique em "Adicionar" no vídeo desejado.</p>
+            <div class="form-group">
+              <input type="text" id="adminVideoSearchInput" placeholder="Ex: Zeca Pagodinho - Deixa a Vida Me Levar">
+              <button id="searchVideoBtn">Buscar</button>
+            </div>
+            <div id="adminSearchResults" class="search-results-container">
+              </div>
+          </section>
+
+          <section class="card">
+             <h2>Faixa Promocional</h2>
+             <p>Digite o texto que aparecerá na faixa inferior da tela do player.</p>
+             <div class="form-group">
+               <input type="text" id="promoText" placeholder="Ex: Promoção! 3 Cervejas por R$ 10,00">
+               <button id="savePromoBtn">Salvar</button>
+             </div>
+          </section>
+          
+          <section class="card full-height">
+            <h2>Lista de Inatividade (Autoplay)</h2>
+            <p>Cole os Nomes das músicas (um por linha). O sistema tocará o primeiro resultado de cada busca.</p>
+            <div class="form-group vertical">
+              <textarea id="inactivityList" rows="10" placeholder="Ex: hino nacional
+Ex: Skank - Vou Deixar"></textarea>
+              <button id="saveListBtn">Salvar Lista</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "meu-site-youtube",
+  "version": "1.0.0",
+  "description": "Sistema de seleção de vídeos do YouTube com pagamento via PIX",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Conteiner Beer",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^4.19.2",
+    "mercadopago": "^2.0.9",
+    "socket.io": "^4.7.5",
+    "youtube-search-api": "^1.2.0"
+  }
+}
