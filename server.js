@@ -159,7 +159,7 @@ app.post("/create-payment", async (req, res) => {
         transaction_amount: Number(amount),
         description: description,
         payment_method_id: "pix",
-        payer: { email: "test_user_123456@testuser.com" }, // E-mail para teste (Pode precisar mudar para produção)
+    
         notification_url: notification_url
       }
     });
@@ -389,3 +389,4 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
   console.log(`🔥 Servidor rodando na porta ${PORT}`); // Render define a porta
 });
+
