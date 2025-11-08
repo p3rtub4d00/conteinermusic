@@ -3,7 +3,7 @@ let player;
 let isPlayerReady = false;
 
 let currentVideoTimer = null;
-const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos em milissegundos
+const MAX_PLAYBACK_TIME = 60 * 60 * 1000; // 5 minutos em milissegundos
 
 let pendingVideo = null;
 
@@ -232,5 +232,6 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
   }
 
 }
+
 
 
