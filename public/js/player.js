@@ -3,7 +3,7 @@ let player;
 let isPlayerReady = false;
 
 let currentVideoTimer = null;
-const MAX_PLAYBACK_TIME = 60 * 60 * 1000; // 5 minutos em milissegundos
+const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos em milissegundos
 
 let pendingVideo = null;
 
@@ -87,6 +87,19 @@ function onPlayerStateChange(event) {
 
 // 4. Ouve por comandos do servidor
 socket.on('connect', () => console.log('[Player.js] Conectado ao servidor'));
+
+// 🔽🔽🔽 [NOVO PING KEEPALIVE] 🔽🔽🔽
+// Envia um ping a cada 5 minutos para manter o serviço do Render ativo
+const PING_INTERVAL = 5 * 60 * 1000; // 5 minutos
+setInterval(() => {
+  if (socket.connected) {
+    console.log('[Player.js] Enviando ping keep-alive para o servidor...');
+    socket.emit('player:ping');
+  } else {
+    console.warn('[Player.js] Não conectado, pulando ping.');
+  }
+}, PING_INTERVAL);
+// 🔼🔼🔼 [FIM DO PING KEEPALIVE] 🔼🔼🔼
 
 // Evento único para tocar um vídeo (agora com 'message')
 socket.on('player:playVideo', ({ videoId, title, message }) => {
@@ -186,7 +199,7 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
     console.log(`[Player.js] Preparando para falar a mensagem: "${message}"`);
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'pt-BR';
-    utterance.rate = 1.0; // Velocidade ajustada
+    utterance.rate = 1.0; // Velocidade 1.0 (Normal)
     utterance.pitch = 1.0;
 
     let speechTimeout = null;
@@ -230,8 +243,4 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
     console.log('[Player.js] Tocando vídeo diretamente.');
     loadAndPlayVideo();
   }
-
 }
-
-
-
