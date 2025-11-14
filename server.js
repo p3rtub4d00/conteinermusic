@@ -256,10 +256,10 @@ app.post("/create-payment", async (req, res) => {
 });
 
 
-// 🔹 Webhook para receber confirmação de pagamento (Lógica Corrigida para ambos formatos + Log Emit)
+// 🔹 Webhook para receber confirmação de pagamento (Lógica Corrigida)
 app.post("/webhook", async (req, res) => {
   console.log("[Server] Webhook recebido!");
-  // console.log("[Server] Corpo do Webhook:", req.body); // Descomente para depuração detalhada
+  // console.log("[Server] Corpo do Webhook:", req.body); // Descomente para depuração
 
   try {
     const notification = req.body;
@@ -273,11 +273,8 @@ app.post("/webhook", async (req, res) => {
         // Extrai o ID da URL do resource
         const urlParts = notification.resource.split('/');
         paymentId = urlParts[urlParts.length - 1];
-        if (!paymentId) { // Validação extra se a URL for inesperada
-             console.warn('[Server] Não foi possível extrair paymentId da URL do resource:', notification.resource);
-        } else {
-             console.log(`[Server] Notificação simples recebida para ID: ${paymentId}`);
-        }
+        if (!paymentId) { console.warn('[Server] Não foi possível extrair paymentId da URL do resource:', notification.resource); }
+        else { console.log(`[Server] Notificação simples recebida para ID: ${paymentId}`); }
     } else if (notification?.action?.startsWith('payment.') && notification.data?.id) {
          paymentId = notification.data.id;
          console.log(`[Server] Notificação de ação recebida para ID: ${paymentId}`);
@@ -330,13 +327,13 @@ app.post("/webhook", async (req, res) => {
 
       // 5. ENVIA CONFIRMAÇÃO PARA O CLIENTE ESPECÍFICO
       if (order.socketId) {
-          console.log(`[Server] TENTANDO ENVIAR 'paymentConfirmed' para socket ${order.socketId}`); // <-- LOG ADICIONADO
-          const targetSocket = io.sockets.sockets.get(order.socketId); // Tenta pegar o socket
+          console.log(`[Server] TENTANDO ENVIAR 'paymentConfirmed' para socket ${order.socketId}`);
+          const targetSocket = io.sockets.sockets.get(order.socketId);
           if (targetSocket) {
-              targetSocket.emit('paymentConfirmed'); // Envia SÓ para ele
-              console.log(`[Server] 'paymentConfirmed' EMITIDO com sucesso para ${order.socketId}.`); // <-- LOG ADICIONADO
+              targetSocket.emit('paymentConfirmed');
+              console.log(`[Server] 'paymentConfirmed' EMITIDO com sucesso para ${order.socketId}.`);
           } else {
-               console.warn(`[Server] Socket ${order.socketId} não encontrado. Não foi possível enviar 'paymentConfirmed'. O cliente pode ter desconectado.`); // <-- LOG ADICIONADO
+               console.warn(`[Server] Socket ${order.socketId} não encontrado. Não foi possível enviar 'paymentConfirmed'. O cliente pode ter desconectado.`);
           }
       } else {
           console.warn(`[Server] Não foi possível encontrar socketId para o pagamento ${paymentId} para enviar confirmação.`);
@@ -349,17 +346,15 @@ app.post("/webhook", async (req, res) => {
     } else if (paymentDetails.status !== 'approved' && pendingPayments[paymentId]) {
       // Pagamento ainda não aprovado (pending, rejected, etc.)
       console.log(`[Server] Status do pagamento ${paymentId} ainda é '${paymentDetails.status}'. Aguardando aprovação (não removendo dos pendentes).`);
-      // NÃO remove da lista pendingPayments aqui. Espera o webhook de 'approved'.
     } else if (!pendingPayments[paymentId]) {
         console.log(`[Server] Notificação recebida para pagamento ${paymentId} (Status: ${paymentDetails.status}) que não estava pendente ou já foi processado.`);
     }
 
-    // Responde 200 OK para o Mercado Pago em todos os casos válidos
     res.sendStatus(200);
 
   } catch (err) {
     console.error("[Server] Erro CRÍTICO no processamento do webhook:", err);
-    res.sendStatus(500); // Informa erro, MP pode tentar de novo
+    res.sendStatus(500);
   }
 });
 
@@ -372,28 +367,26 @@ io.on("connection", (socket) => {
   socket.emit('updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
   socket.emit('player:updatePromoText', currentPromoText);
 
-  // --- Lógica de Simulação (Cliente) ---
+  // --- Lógica de Simulação (Cliente - Comentada no main.js) ---
   socket.on('simulatePlay', ({ videos, message }) => {
     if (videos && videos.length > 0) {
       console.log(`[Server] [SIMULAÇÃO] Recebido pedido de cliente.`);
 
-      isCustomerPlaying = true; // Simulação sempre tem prioridade
+      isCustomerPlaying = true;
       if (inactivityTimer) clearTimeout(inactivityTimer);
       inactivityTimer = null;
 
       const customerVideos = videos.map(v => ({
           ...v,
           isCustomer: true,
-          message: message // Adiciona a mensagem da simulação
+          message: message
       }));
 
-      // Se a lista da casa estiver tocando, interrompe e coloca o cliente primeiro
       if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
          console.log('[Server] [SIMULAÇÃO] Música da casa interrompida para tocar simulação.');
         mainQueue = [...customerVideos, ...mainQueue];
         playNextInQueue();
       } else {
-        // Se não, só adiciona no fim da fila
         mainQueue.push(...customerVideos);
         if (!nowPlayingInfo) {
             console.log('[Server] [SIMULAÇÃO] Player ocioso, iniciando fila simulada.');
@@ -409,11 +402,9 @@ io.on("connection", (socket) => {
   // --- Eventos do Player (TV) ---
   socket.on('player:ready', () => {
     console.log(`[Server] Player (TV) está pronto: ${socket.id}`);
-    // Envia estado inicial APENAS para este player que conectou
     socket.emit('player:setInitialState', { volume: currentVolume, isMuted: isMuted });
     socket.emit('player:updatePromoText', currentPromoText);
 
-    // Só inicia o timer SE NADA estiver tocando (evita race condition)
     if (!nowPlayingInfo) {
       startInactivityTimer();
     }
@@ -421,14 +412,17 @@ io.on("connection", (socket) => {
 
   socket.on('player:videoEnded', () => {
     console.log('[Server] Player informa: vídeo terminou. Tocando o próximo.');
-    playNextInQueue(); // Toca o próximo da fila gerenciada pelo servidor
+    playNextInQueue();
+  });
+
+  socket.on('player:ping', () => {
+    console.log(`[Server] Ping keep-alive recebido do player: ${socket.id}`);
   });
 
 
   // --- Eventos do Painel Admin ---
   socket.on('admin:getList', () => {
     console.log(`[Server] Admin ${socket.id} pediu estado inicial.`);
-    // Envia estado atual APENAS para este admin
     socket.emit('admin:loadInactivityList', inactivityListNames);
     socket.emit('admin:updateRevenue', dailyRevenue);
     socket.emit('admin:updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
@@ -438,16 +432,13 @@ io.on("connection", (socket) => {
 
   socket.on('admin:saveInactivityList', async (nameArray) => {
     console.log('[Server] Admin salvou a lista de nomes:', nameArray);
-    inactivityListNames = Array.isArray(nameArray) ? nameArray : []; // Garante que é array
+    inactivityListNames = Array.isArray(nameArray) ? nameArray : [];
 
-    // Busca os IDs para cada nome em paralelo
     const idPromises = inactivityListNames.map(name => fetchVideoIdByName(name));
-    // Espera todas as buscas e filtra IDs nulos
     inactivityListIDs = (await Promise.all(idPromises)).filter(id => id !== null);
 
     console.log('[Server] Lista de IDs de inatividade salva:', inactivityListIDs);
 
-    // Se o player estiver ocioso, reinicia o timer para considerar a nova lista
     if (!isCustomerPlaying && !nowPlayingInfo) {
       startInactivityTimer();
     }
@@ -457,7 +448,7 @@ io.on("connection", (socket) => {
     try {
       if (!query) return;
       console.log(`[Server] Admin ${socket.id} buscando por: "${query}"`);
-      const result = await youtubeSearchApi.GetListByKeyword(query, false, 5); // Limita a 5 resultados
+      const result = await youtubeSearchApi.GetListByKeyword(query, false, 5);
 
       const items = result.items
         .filter(item => item.id && item.title)
@@ -467,15 +458,16 @@ io.on("connection", (socket) => {
           channel: item.channel?.name ?? 'Indefinido'
         }));
 
-      // Envia os resultados de volta APENAS para o admin que buscou
       socket.emit('admin:searchResults', items);
 
     } catch (err) {
       console.error('[Server] Erro na busca do admin:', err.message);
-      socket.emit('admin:searchResults', []); // Envia lista vazia em caso de erro
+      socket.emit('admin:searchResults', []);
     }
   });
 
+  // ❗️❗️ [LÓGICA CORRIGIDA: admin:addVideo] ❗️❗️
+  // Agora sempre adiciona ao final da fila, não interrompe mais.
   socket.on('admin:addVideo', ({ videoId, videoTitle }) => {
     if (videoId && videoTitle) {
       console.log(`[Server] Admin ${socket.id} adicionou um vídeo: ${videoTitle}`);
@@ -483,49 +475,44 @@ io.on("connection", (socket) => {
       // Cria o item da fila sem mensagem
       const adminVideo = { id: videoId, title: videoTitle, isCustomer: false, message: null };
 
-      // Se a lista da casa estiver tocando, interrompe e toca este
-      if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
-         console.log('[Server] Música da casa interrompida para tocar vídeo do admin.');
-        mainQueue = [adminVideo, ...mainQueue]; // Adiciona no início
-        playNextInQueue(); // Pula a música da casa
+      // LÓGICA ANTIGA QUE INTERROMPIA (removida):
+      // if (nowPlayingInfo && !nowPlayingInfo.isCustomer) { ... }
+      
+      // NOVA LÓGICA (sempre adiciona ao fim):
+      mainQueue.push(adminVideo);
+      if (!nowPlayingInfo) {
+           console.log('[Server] Player ocioso, iniciando vídeo do admin.');
+           playNextInQueue(); // Começa a tocar se nada estiver tocando
       } else {
-        // Senão, adiciona no fim da fila
-        mainQueue.push(adminVideo);
-        if (!nowPlayingInfo) {
-             console.log('[Server] Player ocioso, iniciando vídeo do admin.');
-             playNextInQueue(); // Começa a tocar se nada estiver tocando
-        } else {
-             console.log('[Server] Player ocupado, adicionando vídeo do admin ao fim da fila.');
-             broadcastPlayerState(); // Apenas atualiza a UI da fila
-        }
+           console.log('[Server] Player ocupado, adicionando vídeo do admin ao fim da fila.');
+           broadcastPlayerState(); // Apenas atualiza a UI da fila
       }
+
     } else {
         console.warn(`[Server] Admin ${socket.id} tentou adicionar vídeo inválido:`, { videoId, videoTitle });
     }
   });
 
   socket.on('admin:setPromoText', (text) => {
-    currentPromoText = text || ""; // Garante que é uma string
+    currentPromoText = text || "";
     console.log(`[Server] Admin ${socket.id} definiu o texto promocional para: "${currentPromoText}"`);
-    // Envia para todos os players e admins
     io.emit('player:updatePromoText', currentPromoText);
-    io.emit('admin:loadPromoText', currentPromoText); // Atualiza outros admins
+    io.emit('admin:loadPromoText', currentPromoText);
   });
 
   // --- Controles do Admin ---
 
   socket.on('admin:controlSkip', () => {
     console.log(`[Server] Admin ${socket.id} pulou a música.`);
-    playNextInQueue(); // Força o próximo item da fila gerenciada pelo servidor
+    playNextInQueue();
   });
 
   socket.on('admin:controlPause', () => {
     console.log(`[Server] Admin ${socket.id} pausou/tocou a música.`);
-    io.emit('player:pause'); // Envia para todos os players
+    io.emit('player:pause');
   });
 
   socket.on('admin:controlVolume', ({ volume }) => {
-    // Valida o volume
     const newVolume = parseInt(volume, 10);
     if (isNaN(newVolume) || newVolume < 0 || newVolume > 100) {
         console.warn(`[Server] Admin ${socket.id} enviou volume inválido:`, volume);
@@ -536,7 +523,6 @@ io.on("connection", (socket) => {
 
     console.log(`[Server] Admin ${socket.id} definiu o volume para: ${currentVolume} (Mudo: ${isMuted})`);
 
-    // Envia o novo volume para todos os players E todos os admins (para sincronizar sliders)
     io.emit('admin:updateVolume', { volume: currentVolume, isMuted: isMuted });
     io.emit('player:setVolume', { volume: currentVolume, isMuted: isMuted });
   });
@@ -544,12 +530,11 @@ io.on("connection", (socket) => {
 
   // --- Desconexão ---
   socket.on("disconnect", (reason) => {
-    console.log(`[Server] Cliente Socket.IO desconectado: ${socket.id}. Razão: ${reason}`); // Log de desconexão
+    console.log(`[Server] Cliente Socket.IO desconectado: ${socket.id}. Razão: ${reason}`);
   });
 });
 
 // 🔹 Iniciar servidor
 server.listen(PORT, () => {
-  // Render define a porta, então usamos PORT aqui. Localmente será 3000.
   console.log(`🔥 Servidor rodando na porta ${PORT}`);
 });
