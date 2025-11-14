@@ -30,11 +30,10 @@ const savePromoBtn = document.getElementById('savePromoBtn');
 // Eventos de Saída (Enviando para o Servidor)
 // -----------------
 
-// ❗️❗️ BLOCO DE CÓDIGO DEFEITUOSO (saveListBtn) REMOVIDO DAQUI ❗️❗️
-
 // 2. Buscar um vídeo
 if (searchVideoBtn) {
     searchVideoBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Buscar"); // Log
         const query = adminVideoSearchInput.value.trim();
         if (!query) {
             return alert('Por favor, digite um termo para buscar.');
@@ -52,7 +51,6 @@ if (adminSearchResultsDiv) {
     adminSearchResultsDiv.addEventListener('click', (e) => {
         const target = e.target;
         
-        // Pega os dados do item pai
         const resultItem = target.closest('.search-result-item');
         if (!resultItem) return;
         
@@ -62,15 +60,16 @@ if (adminSearchResultsDiv) {
 
         // Caso 1: Clicou em "Adicionar à Fila"
         if (target.classList.contains('add-result-btn')) {
+            console.log("[admin.js] Clique: Adicionar à Fila"); // Log
             socket.emit('admin:addVideo', { videoId: videoId, videoTitle: videoTitle }); 
             alert(`"${videoTitle}" enviado para a fila!`);
         }
 
         // Caso 2: Clicou em "Salvar na Lista"
         if (target.classList.contains('save-house-list-btn')) {
+            console.log("[admin.js] Clique: Salvar na Lista da Casa"); // Log
             socket.emit('admin:saveToHouseList', { id: videoId, title: videoTitle }); 
             alert(`"${videoTitle}" salvo na Lista da Casa!`);
-            // Desabilita o botão para feedback
             target.textContent = 'Salvo ✓';
             target.disabled = true;
         }
@@ -82,6 +81,7 @@ if (adminSearchResultsDiv) {
 // 4. Controles do Player
 if (pauseBtn) {
     pauseBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Pausar/Tocar"); // Log
         socket.emit('admin:controlPause');
     });
 } else {
@@ -90,6 +90,7 @@ if (pauseBtn) {
 
 if (skipBtn) {
     skipBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Pular"); // Log
         socket.emit('admin:controlSkip');
     });
 } else {
@@ -99,6 +100,7 @@ if (skipBtn) {
 if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
         const volume = e.target.value;
+        console.log("[admin.js] Input Volume:", volume); // Log
         if(volumeValueSpan) volumeValueSpan.textContent = `${volume}%`;
         socket.emit('admin:controlVolume', { volume: volume });
     });
@@ -109,6 +111,7 @@ if (volumeSlider) {
 // 5. Salvar Texto da Promoção
 if (savePromoBtn) {
     savePromoBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Salvar Promoção"); // Log
         const text = promoTextInput.value.trim();
         socket.emit('admin:setPromoText', text);
         alert('Texto da promoção salvo!');
@@ -124,7 +127,7 @@ if (houseListUl) {
         if (e.target.classList.contains('remove-house-list-btn')) {
             const videoId = e.target.dataset.id;
             if (videoId) {
-                console.log('Solicitando remoção do ID:', videoId);
+                console.log('[admin.js] Clique: Remover da Lista da Casa, ID:', videoId); // Log
                 socket.emit('admin:removeFromHouseList', { id: videoId });
             }
         }
@@ -140,7 +143,7 @@ if (houseListUl) {
 
 // 1. Ao conectar, pede os dados atuais
 socket.on('connect', () => {
-  console.log('Conectado ao servidor como admin.');
+  console.log('[admin.js] Conectado ao servidor como admin.');
   socket.emit('admin:getList');
 });
 
@@ -153,13 +156,12 @@ socket.on('admin:updateRevenue', (amount) => {
 
 // 3. Recebe os resultados da busca do admin
 socket.on('admin:searchResults', (results) => {
+  console.log('[admin.js] Recebidos resultados da busca:', results.length); // Log
   if (!adminSearchResultsDiv) return; 
   if (results.length === 0) {
     adminSearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
     return;
   }
-
-  // Renderiza DOIS botões
   adminSearchResultsDiv.innerHTML = results.map(video => `
     <div class="search-result-item" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">
       <div class="result-info">
@@ -180,6 +182,7 @@ socket.on('admin:searchResults', (results) => {
 
 // 4. Recebe atualização de volume
 socket.on('admin:updateVolume', (data) => {
+  console.log('[admin.js] Recebida atualização de volume:', data); // Log
   if (volumeSlider) {
     volumeSlider.value = data.volume;
   }
@@ -190,6 +193,7 @@ socket.on('admin:updateVolume', (data) => {
 
 // 5. Recebe atualização do estado do player (Tocando Agora / Fila)
 socket.on('updatePlayerState', (state) => {
+  console.log('[admin.js] Recebido updatePlayerState:', state); // Log
   // Atualiza o "Tocando Agora"
   if (adminNowPlayingSpan) {
       if (state.nowPlaying) {
@@ -197,7 +201,6 @@ socket.on('updatePlayerState', (state) => {
         if (!state.nowPlaying.isCustomer) {
           adminNowPlayingSpan.textContent += ' (Lista da Casa)';
         }
-        // Mostra a mensagem se houver
         if (adminNowPlayingMessageSpan) {
             if (state.nowPlaying.message) {
               adminNowPlayingMessageSpan.textContent = `"${state.nowPlaying.message}"`;
@@ -233,6 +236,7 @@ socket.on('updatePlayerState', (state) => {
 
 // 6. Recebe o texto promocional atual
 socket.on('admin:loadPromoText', (text) => {
+  console.log('[admin.js] Carregando texto promo:', text); // Log
   if (promoTextInput) {
     promoTextInput.value = text;
   }
@@ -240,13 +244,13 @@ socket.on('admin:loadPromoText', (text) => {
 
 // 7. Recebe a Lista da Casa (inicialização)
 socket.on('admin:loadHouseList', (houseList) => {
-    console.log('Recebendo lista da casa inicial:', houseList);
+    console.log('[admin.js] Recebendo lista da casa inicial:', houseList);
     renderHouseList(houseList);
 });
 
 // 8. Recebe atualização da Lista da Casa (após add/remove)
 socket.on('admin:updateHouseList', (houseList) => {
-    console.log('Atualizando lista da casa:', houseList);
+    console.log('[admin.js] Atualizando lista da casa:', houseList);
     renderHouseList(houseList);
 });
 
