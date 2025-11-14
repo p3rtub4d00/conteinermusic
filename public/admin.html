@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Contêiner Music Box</title>
-  <link rel="stylesheet" href="/css/admin.css"> 
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
   
@@ -56,8 +56,8 @@
 
         <div class="column">
           <section class="card">
-            <h2>Adicionar Música na Fila</h2>
-            <p>Busque por nome ou artista e clique em "Adicionar" no vídeo desejado.</p>
+            <h2>Adicionar Música (Fila ou Lista da Casa)</h2>
+            <p>Busque e adicione à fila (agora) ou salve na lista da casa (para inatividade).</p>
             <div class="form-group">
               <input type="text" id="adminVideoSearchInput" placeholder="Ex: Zeca Pagodinho - Deixa a Vida Me Levar">
               <button id="searchVideoBtn">Buscar</button>
@@ -76,15 +76,17 @@
           </section>
           
           <section class="card full-height">
-            <h2>Lista de Inatividade (Autoplay)</h2>
-            <p>Cole os Nomes das músicas (um por linha). O sistema tocará o primeiro resultado de cada busca.</p>
-            <div class="form-group vertical">
-              <textarea id="inactivityList" rows="10" placeholder="Ex: hino nacional
-Ex: Skank - Vou Deixar"></textarea>
-              <button id="saveListBtn">Salvar Lista</button>
+            <h2>Lista da Casa (Autoplay Ocioso)</h2>
+            <p>Músicas salvas para tocar quando o player estiver ocioso. Use a busca acima para adicionar.</p>
+            
+            <div id="houseListWrapper" class="house-list-container">
+                <ul id="houseList">
+                    </ul>
+                <p id="houseListEmpty" style="display: none;">A lista da casa está vazia.</p>
             </div>
-          </section>
-        </div>
+            
+            </section>
+          </div>
       </div>
     </main>
   </div>
