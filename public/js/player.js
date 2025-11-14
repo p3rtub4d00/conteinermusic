@@ -50,7 +50,7 @@ function onPlayerReady(event) {
 
 // 3. Evento de mudança de estado (lógica do timer)
 function onPlayerStateChange(event) {
-  console.log('[Player.js] Estado do player mudou:', event.data, YT.PlayerState);
+  // console.log('[Player.js] Estado do player mudou:', event.data, YT.PlayerState); // Log muito verboso, comentado
 
   // Limpa o timer se o vídeo for pausado ou terminado
   if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
@@ -88,8 +88,7 @@ function onPlayerStateChange(event) {
 // 4. Ouve por comandos do servidor
 socket.on('connect', () => console.log('[Player.js] Conectado ao servidor'));
 
-// 🔽🔽🔽 [NOVO PING KEEPALIVE] 🔽🔽🔽
-// Envia um ping a cada 5 minutos para manter o serviço do Render ativo
+// Envia ping keep-alive
 const PING_INTERVAL = 5 * 60 * 1000; // 5 minutos
 setInterval(() => {
   if (socket.connected) {
@@ -99,7 +98,6 @@ setInterval(() => {
     console.warn('[Player.js] Não conectado, pulando ping.');
   }
 }, PING_INTERVAL);
-// 🔼🔼🔼 [FIM DO PING KEEPALIVE] 🔼🔼🔼
 
 // Evento único para tocar um vídeo (agora com 'message')
 socket.on('player:playVideo', ({ videoId, title, message }) => {
@@ -146,9 +144,13 @@ socket.on('player:setInitialState', (data) => {
 });
 
 socket.on('player:pause', () => {
-  if (!isPlayerReady) return;
+  console.log('[Player.js] Recebido comando player:pause.'); // ❗️ LOG ADICIONADO
+  if (!isPlayerReady) {
+      console.warn('[Player.js] Comando player:pause recebido, mas player não está pronto.');
+      return;
+  }
   const state = player.getPlayerState();
-   console.log('[Player.js] Recebido comando player:pause. Estado atual:', state);
+   console.log('[Player.js] Estado atual do player:', state);
   if (state === YT.PlayerState.PLAYING) {
     player.pauseVideo();
   } else if (state === YT.PlayerState.PAUSED) {
@@ -157,8 +159,11 @@ socket.on('player:pause', () => {
 });
 
 socket.on('player:setVolume', (data) => {
-  if (!isPlayerReady) return;
-  console.log('[Player.js] Recebido comando player:setVolume:', data);
+  console.log('[Player.js] Recebido comando player:setVolume:', data); // ❗️ LOG ADICIONADO
+  if (!isPlayerReady) {
+      console.warn('[Player.js] Comando player:setVolume recebido, mas player não está pronto.');
+      return;
+  }
   player.setVolume(data.volume);
   if (data.isMuted) {
     player.mute();
