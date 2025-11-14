@@ -140,21 +140,21 @@ function startInactivityTimer() {
     }
 
     // Se não for música de cliente (já verificado por nowPlayingInfo) e a lista de inatividade existir
-    if (houseList.length > 0) { // ❗️ CORRIGIDO para houseList
-      console.log('[Server] Inatividade detectada. Tocando lista da casa.');
+    if (inactivityListIDs.length > 0) {
+      console.log('[Server] Inatividade detectada. Tocando lista de inatividade.');
 
-      // Cria a fila de inatividade a partir da houseList
-      mainQueue = houseList.map(item => ({ // ❗️ CORRIGIDO para houseList
-        id: item.id,
-        title: item.title, // Usa o título real salvo
+      // Cria a fila de inatividade com títulos genéricos
+      mainQueue = inactivityListIDs.map(id => ({
+        id: id,
+        title: '(Música da Casa)',
         isCustomer: false,
-        message: null
+        message: null // Lista da casa não tem mensagem
       }));
 
       // Toca o primeiro item
       playNextInQueue();
     } else {
-        console.log('[Server] Timer de inatividade expirou, mas a lista da casa está vazia.');
+        console.log('[Server] Timer de inatividade expirou, mas a lista está vazia.');
         // Garante que o estado seja transmitido mesmo se nada tocar
         broadcastPlayerState();
     }
@@ -423,44 +423,24 @@ io.on("connection", (socket) => {
   // --- Eventos do Painel Admin ---
   socket.on('admin:getList', () => {
     console.log(`[Server] Admin ${socket.id} pediu estado inicial.`);
-    // ❗️ Modificado para enviar houseList
-    socket.emit('admin:loadHouseList', houseList);
+    socket.emit('admin:loadInactivityList', inactivityListNames);
     socket.emit('admin:updateRevenue', dailyRevenue);
     socket.emit('admin:updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
     socket.emit('admin:updateVolume', { volume: currentVolume, isMuted: isMuted });
     socket.emit('admin:loadPromoText', currentPromoText);
   });
 
-  // ❗️ NOVO: Salva um item na Lista da Casa
-  socket.on('admin:saveToHouseList', ({ id, title }) => {
-    if (id && title) {
-        // Verifica se já não existe
-        if (houseList.some(item => item.id === id)) {
-            console.log(`[Server] Admin ${socket.id} tentou salvar vídeo que já está na lista: ${title}`);
-            return;
-        }
-        
-        console.log(`[Server] Admin ${socket.id} salvou na Lista da Casa: ${title}`);
-        houseList.push({ id, title });
-        
-        // Transmite a lista atualizada para TODOS os admins conectados
-        io.emit('admin:updateHouseList', houseList);
-        
-        if (!isCustomerPlaying && !nowPlayingInfo) {
-          startInactivityTimer();
-        }
-    } else {
-         console.warn(`[Server] Admin ${socket.id} tentou salvar item inválido na Lista da Casa:`, { id, title });
-    }
-  });
-  
-  // ❗️ NOVO: Remove um item da Lista da Casa
-  socket.on('admin:removeFromHouseList', ({ id }) => {
-    if (id) {
-        console.log(`[Server] Admin ${socket.id} removeu item da Lista da Casa: ${id}`);
-        houseList = houseList.filter(item => item.id !== id);
-        // Transmite a lista atualizada para TODOS os admins conectados
-        io.emit('admin:updateHouseList', houseList);
+  socket.on('admin:saveInactivityList', async (nameArray) => {
+    console.log('[Server] Admin salvou a lista de nomes:', nameArray);
+    inactivityListNames = Array.isArray(nameArray) ? nameArray : [];
+
+    const idPromises = inactivityListNames.map(name => fetchVideoIdByName(name));
+    inactivityListIDs = (await Promise.all(idPromises)).filter(id => id !== null);
+
+    console.log('[Server] Lista de IDs de inatividade salva:', inactivityListIDs);
+
+    if (!isCustomerPlaying && !nowPlayingInfo) {
+      startInactivityTimer();
     }
   });
 
@@ -486,21 +466,26 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Adiciona vídeo à fila (lógica de não interromper)
+  // ❗️❗️ [LÓGICA CORRIGIDA: admin:addVideo] ❗️❗️
+  // Agora sempre adiciona ao final da fila, não interrompe mais.
   socket.on('admin:addVideo', ({ videoId, videoTitle }) => {
     if (videoId && videoTitle) {
       console.log(`[Server] Admin ${socket.id} adicionou um vídeo: ${videoTitle}`);
 
+      // Cria o item da fila sem mensagem
       const adminVideo = { id: videoId, title: videoTitle, isCustomer: false, message: null };
 
-      // Sempre adiciona ao fim
+      // LÓGICA ANTIGA QUE INTERROMPIA (removida):
+      // if (nowPlayingInfo && !nowPlayingInfo.isCustomer) { ... }
+      
+      // NOVA LÓGICA (sempre adiciona ao fim):
       mainQueue.push(adminVideo);
       if (!nowPlayingInfo) {
            console.log('[Server] Player ocioso, iniciando vídeo do admin.');
-           playNextInQueue();
+           playNextInQueue(); // Começa a tocar se nada estiver tocando
       } else {
            console.log('[Server] Player ocupado, adicionando vídeo do admin ao fim da fila.');
-           broadcastPlayerState();
+           broadcastPlayerState(); // Apenas atualiza a UI da fila
       }
 
     } else {
