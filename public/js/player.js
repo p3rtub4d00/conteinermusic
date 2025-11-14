@@ -1,251 +1,278 @@
 const socket = io();
-let player;
-let isPlayerReady = false;
 
-let currentVideoTimer = null;
-const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos em milissegundos
+// Elementos da DOM
+const revenueSpan = document.getElementById('revenue');
+const searchVideoBtn = document.getElementById('searchVideoBtn');
+const adminVideoSearchInput = document.getElementById('adminVideoSearchInput');
+const adminSearchResultsDiv = document.getElementById('adminSearchResults');
 
-let pendingVideo = null;
+// Elementos da Lista da Casa
+const houseListUl = document.getElementById('houseList');
+const houseListEmptyMsg = document.getElementById('houseListEmpty');
 
-// Elementos da Faixa de Promoção
-const promoBannerElement = document.getElementById('promo-banner');
-const promoTextContentElement = document.getElementById('promo-text-content'); // Span interno
+// Elementos de Controle do Player
+const pauseBtn = document.getElementById('pauseBtn');
+const skipBtn = document.getElementById('skipBtn');
+const volumeSlider = document.getElementById('volumeSlider');
+const volumeValueSpan = document.getElementById('volumeValue');
 
-// TTS REATIVADO: Referência à API de Fala
-const synth = window.speechSynthesis;
+// Elementos da Fila
+const adminNowPlayingSpan = document.getElementById('adminNowPlaying');
+const adminNowPlayingMessageSpan = document.getElementById('adminNowPlayingMessage'); 
+const adminQueueList = document.getElementById('adminQueueList');
+
+// Elementos da Promoção
+const promoTextInput = document.getElementById('promoText');
+const savePromoBtn = document.getElementById('savePromoBtn');
 
 
-// 1. A API do YouTube chama esta função quando está pronta.
-function onYouTubeIframeAPIReady() {
-  console.log("[Player.js] API do Iframe do YouTube está pronta.");
-  player = new YT.Player('player', {
-    width: '100%',
-    height: '100%',
-    playerVars: { autoplay: 1, controls: 1, rel: 0 },
-    events: {
-      'onReady': onPlayerReady,
-      'onStateChange': onPlayerStateChange
-    }
-  });
+// -----------------
+// Eventos de Saída (Enviando para o Servidor)
+// -----------------
+
+// 2. Buscar um vídeo
+if (searchVideoBtn) {
+    searchVideoBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Buscar"); // Log
+        const query = adminVideoSearchInput.value.trim();
+        if (!query) {
+            return alert('Por favor, digite um termo para buscar.');
+        }
+
+        adminSearchResultsDiv.innerHTML = '<p>Buscando...</p>';
+        socket.emit('admin:search', query);
+    });
+} else {
+    console.error("Erro: Botão searchVideoBtn não encontrado.");
 }
 
-// 2. Evento quando o *player* está pronto.
-function onPlayerReady(event) {
-  console.log('[Player.js] Evento onPlayerReady disparado!');
-  isPlayerReady = true;
-  player.mute(); // Muta inicialmente
+// 3. Lidar com cliques nos resultados da busca (Adic. Fila / Salvar Lista)
+if (adminSearchResultsDiv) {
+    adminSearchResultsDiv.addEventListener('click', (e) => {
+        const target = e.target;
+        
+        // Pega os dados do item pai
+        const resultItem = target.closest('.search-result-item');
+        if (!resultItem) return;
+        
+        const videoId = resultItem.dataset.id;
+        const videoTitle = resultItem.dataset.title;
+        if (!videoId || !videoTitle) return;
 
-  console.log('[Player.js] Enviando "player:ready" para o servidor.');
-  socket.emit('player:ready');
+        // Caso 1: Clicou em "Adicionar à Fila"
+        if (target.classList.contains('add-result-btn')) {
+            console.log("[admin.js] Clique: Adicionar à Fila"); // Log
+            socket.emit('admin:addVideo', { videoId: videoId, videoTitle: videoTitle }); 
+            alert(`"${videoTitle}" enviado para a fila!`);
+        }
 
-  // Se houver um vídeo pendente (que chegou antes do player ficar pronto)
-  if (pendingVideo) {
-    console.log('[Player.js] Tocando vídeo pendente que chegou antes do player.');
-    playVideo(pendingVideo);
-    pendingVideo = null;
-  } else {
-    console.log('[Player.js] Nenhum vídeo pendente encontrado.');
-  }
+        // Caso 2: Clicou em "Salvar na Lista"
+        if (target.classList.contains('save-house-list-btn')) {
+            console.log("[admin.js] Clique: Salvar na Lista da Casa"); // Log
+            socket.emit('admin:saveToHouseList', { id: videoId, title: videoTitle }); 
+            alert(`"${videoTitle}" salvo na Lista da Casa!`);
+            target.textContent = 'Salvo ✓';
+            target.disabled = true;
+        }
+    });
+} else {
+    console.error("Erro: Div adminSearchResults não encontrada.");
 }
 
-// 3. Evento de mudança de estado (lógica do timer)
-function onPlayerStateChange(event) {
-  // console.log('[Player.js] Estado do player mudou:', event.data, YT.PlayerState); // Log muito verboso, comentado
-
-  // Limpa o timer se o vídeo for pausado ou terminado
-  if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-    if (currentVideoTimer) {
-      console.log('[Player.js] Vídeo pausado ou terminado, limpando timer.');
-      clearTimeout(currentVideoTimer);
-      currentVideoTimer = null;
-    }
-  }
-
-  // Se o vídeo está TOCANDO (estado 1)
-  if (event.data === YT.PlayerState.PLAYING) {
-    // Só inicia um novo timer se ele já não estiver rodando
-    if (!currentVideoTimer) {
-      console.log(`[Player.js] Iniciando timer de ${MAX_PLAYBACK_TIME / 60000} minutos para o vídeo.`);
-      currentVideoTimer = setTimeout(() => {
-        console.log(`[Player.js] Tempo limite de ${MAX_PLAYBACK_TIME / 60000} minutos atingido! Pulando...`);
-        currentVideoTimer = null;
-        socket.emit('player:videoEnded');
-      }, MAX_PLAYBACK_TIME);
-    }
-  }
-  // Se o vídeo TERMINOU (estado 0)
-  else if (event.data === YT.PlayerState.ENDED) {
-      console.log('[Player.js] Vídeo terminou, avisando o servidor.');
-      if (synth && synth.speaking) synth.cancel();
-      if (currentVideoTimer) {
-          clearTimeout(currentVideoTimer);
-          currentVideoTimer = null;
-      }
-      socket.emit('player:videoEnded');
-  }
+// 4. Controles do Player
+if (pauseBtn) {
+    pauseBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Pausar/Tocar"); // Log
+        socket.emit('admin:controlPause');
+    });
+} else {
+     console.error("Erro: Botão pauseBtn não encontrado.");
 }
 
-// 4. Ouve por comandos do servidor
-socket.on('connect', () => console.log('[Player.js] Conectado ao servidor'));
+if (skipBtn) {
+    skipBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Pular"); // Log
+        socket.emit('admin:controlSkip');
+    });
+} else {
+     console.error("Erro: Botão skipBtn não encontrado.");
+}
 
-// Envia ping keep-alive
-const PING_INTERVAL = 5 * 60 * 1000; // 5 minutos
-setInterval(() => {
-  if (socket.connected) {
-    console.log('[Player.js] Enviando ping keep-alive para o servidor...');
-    socket.emit('player:ping');
-  } else {
-    console.warn('[Player.js] Não conectado, pulando ping.');
-  }
-}, PING_INTERVAL);
+if (volumeSlider) {
+    volumeSlider.addEventListener('input', (e) => {
+        const volume = e.target.value;
+        console.log("[admin.js] Input Volume:", volume); // Log
+        if(volumeValueSpan) volumeValueSpan.textContent = `${volume}%`;
+        socket.emit('admin:controlVolume', { volume: volume });
+    });
+} else {
+     console.error("Erro: Slider volumeSlider não encontrado.");
+}
 
-// Evento único para tocar um vídeo (agora com 'message')
-socket.on('player:playVideo', ({ videoId, title, message }) => {
-  console.log('[Player.js] Recebido comando player:playVideo', { videoId, title, message });
-  const videoInfo = { videoId, title, message }; // Guarda a mensagem
+// 5. Salvar Texto da Promoção
+if (savePromoBtn) {
+    savePromoBtn.addEventListener('click', () => {
+        console.log("[admin.js] Clique: Salvar Promoção"); // Log
+        const text = promoTextInput.value.trim();
+        socket.emit('admin:setPromoText', text);
+        alert('Texto da promoção salvo!');
+    });
+} else {
+    console.error("Erro: Botão savePromoBtn não encontrado.");
+}
 
-  if (isPlayerReady) {
-    playVideo(videoInfo);
-  } else {
-    console.log('[Player.js] Comando de tocar recebido, mas player não está pronto. Armazenando.');
-    pendingVideo = videoInfo;
+
+// 6. Listener para remover item da Lista da Casa
+if (houseListUl) {
+    houseListUl.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-house-list-btn')) {
+            const videoId = e.target.dataset.id;
+            if (videoId) {
+                console.log('[admin.js] Clique: Remover da Lista da Casa, ID:', videoId); // Log
+                socket.emit('admin:removeFromHouseList', { id: videoId });
+            }
+        }
+    });
+} else {
+    console.error("Erro: Lista da Casa (houseListUl) não encontrada.");
+}
+
+
+// -----------------
+// Eventos de Entrada (Ouvindo do Servidor)
+// -----------------
+
+// 1. Ao conectar, pede os dados atuais
+socket.on('connect', () => {
+  console.log('[admin.js] Conectado ao servidor como admin.');
+  socket.emit('admin:getList');
+});
+
+// 2. Recebe a atualização de faturamento
+socket.on('admin:updateRevenue', (amount) => {
+  if (revenueSpan) {
+    revenueSpan.textContent = amount.toFixed(2).replace('.', ',');
   }
 });
 
-// Atualiza o texto da faixa de promoção e aplica animação se necessário
-socket.on('player:updatePromoText', (text) => {
-  if (promoBannerElement && promoTextContentElement) {
-    promoTextContentElement.textContent = text;
-    promoBannerElement.offsetHeight; // Força recalcular
-    if (promoTextContentElement.scrollWidth > promoBannerElement.clientWidth) {
-      if (!promoBannerElement.classList.contains('scrolling')) {
-           console.log("[Player.js] Texto da promoção é longo. Ativando scroll.");
-           promoBannerElement.classList.add('scrolling');
-      }
-    } else {
-       if (promoBannerElement.classList.contains('scrolling')) {
-           console.log("[Player.js] Texto da promoção cabe. Desativando scroll.");
-           promoBannerElement.classList.remove('scrolling');
-       }
-    }
-  }
-});
-
-// --- Comandos do Admin ---
-socket.on('player:setInitialState', (data) => {
-  if (!isPlayerReady) return;
-  console.log('[Player.js] Recebendo estado inicial:', data);
-  player.setVolume(data.volume);
-  if (data.isMuted) {
-    player.mute();
-  } else {
-    player.unMute();
-  }
-});
-
-socket.on('player:pause', () => {
-  console.log('[Player.js] Recebido comando player:pause.'); // ❗️ LOG ADICIONADO
-  if (!isPlayerReady) {
-      console.warn('[Player.js] Comando player:pause recebido, mas player não está pronto.');
-      return;
-  }
-  const state = player.getPlayerState();
-   console.log('[Player.js] Estado atual do player:', state);
-  if (state === YT.PlayerState.PLAYING) {
-    player.pauseVideo();
-  } else if (state === YT.PlayerState.PAUSED) {
-    player.playVideo();
-  }
-});
-
-socket.on('player:setVolume', (data) => {
-  console.log('[Player.js] Recebido comando player:setVolume:', data); // ❗️ LOG ADICIONADO
-  if (!isPlayerReady) {
-      console.warn('[Player.js] Comando player:setVolume recebido, mas player não está pronto.');
-      return;
-  }
-  player.setVolume(data.volume);
-  if (data.isMuted) {
-    player.mute();
-  } else {
-    player.unMute();
-  }
-});
-
-// 5. Função para tocar vídeo (com TTS)
-function playVideo({ videoId, title, message }) { // Recebe 'message'
-  if (!isPlayerReady) {
-    console.warn('[Player.js] Função playVideo chamada, mas o player não está pronto.');
+// 3. Recebe os resultados da busca do admin
+socket.on('admin:searchResults', (results) => {
+  console.log('[admin.js] Recebidos resultados da busca:', results.length); // Log
+  if (!adminSearchResultsDiv) return; 
+  if (results.length === 0) {
+    adminSearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
     return;
   }
+  adminSearchResultsDiv.innerHTML = results.map(video => `
+    <div class="search-result-item" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">
+      <div class="result-info">
+        <strong>${video.title}</strong>
+        <small>${video.channel}</small>
+      </div>
+      <div class="result-actions">
+          <button class="add-result-btn" title="Adicionar à fila para tocar agora">
+            Adic. à Fila
+          </button>
+          <button class="save-house-list-btn" title="Salvar na lista da casa (para inatividade)">
+            Salvar na Lista
+          </button>
+      </div>
+    </div>
+  `).join('');
+});
 
-  console.log('[Player.js] Iniciando processo playVideo para:', title);
-
-  if (synth && synth.speaking) synth.cancel();
-  if (currentVideoTimer) {
-    clearTimeout(currentVideoTimer);
-    currentVideoTimer = null;
+// 4. Recebe atualização de volume
+socket.on('admin:updateVolume', (data) => {
+  console.log('[admin.js] Recebida atualização de volume:', data); // Log
+  if (volumeSlider) {
+    volumeSlider.value = data.volume;
   }
-  const currentState = player.getPlayerState();
-  if (currentState === YT.PlayerState.PLAYING || currentState === YT.PlayerState.BUFFERING ) {
-      console.log('[Player.js] Parando vídeo atual antes de carregar o próximo.');
-      player.stopVideo();
+  if (volumeValueSpan) {
+     volumeValueSpan.textContent = `${data.volume}%`;
+  }
+});
+
+// 5. Recebe atualização do estado do player (Tocando Agora / Fila)
+socket.on('updatePlayerState', (state) => {
+  console.log('[admin.js] Recebido updatePlayerState:', state); // Log
+  // Atualiza o "Tocando Agora"
+  if (adminNowPlayingSpan) {
+      if (state.nowPlaying) {
+        adminNowPlayingSpan.textContent = state.nowPlaying.title;
+        if (!state.nowPlaying.isCustomer) {
+          adminNowPlayingSpan.textContent += ' (Lista da Casa)';
+        }
+        if (adminNowPlayingMessageSpan) {
+            if (state.nowPlaying.message) {
+              adminNowPlayingMessageSpan.textContent = `"${state.nowPlaying.message}"`;
+              adminNowPlayingMessageSpan.style.display = 'block';
+            } else {
+              adminNowPlayingMessageSpan.style.display = 'none';
+            }
+        }
+      } else {
+        adminNowPlayingSpan.textContent = 'Nenhuma música tocando...';
+        if(adminNowPlayingMessageSpan) adminNowPlayingMessageSpan.style.display = 'none';
+      }
   }
 
-  // Função interna para carregar o vídeo
-  const loadAndPlayVideo = () => {
-    console.log(`[Player.js] Carregando vídeo: ${title} (${videoId})`);
-    pendingVideo = null;
-    player.loadVideoById(videoId);
-  };
+  // Atualiza a "Próxima da Fila"
+  if (adminQueueList) {
+      if (state.queue && state.queue.length > 0) {
+        adminQueueList.innerHTML = state.queue.map(video => {
+          let title = video.title;
+          if (!video.isCustomer) {
+            title += ' (Lista da Casa)';
+          }
+          if (video.message) {
+             title += ` <span class="queue-message">"${video.message}"</span>`;
+          }
+          return `<li>${title}</li>`;
+        }).join('');
+      } else {
+        adminQueueList.innerHTML = '<li>(Fila vazia)</li>';
+      }
+  }
+});
 
-  // Verifica se há mensagem para falar E se a API de fala está disponível
-  if (message && message.trim().length > 0 && synth) {
-    console.log(`[Player.js] Preparando para falar a mensagem: "${message}"`);
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = 'pt-BR';
-    utterance.rate = 1.0; // Velocidade 1.0 (Normal)
-    utterance.pitch = 1.0;
+// 6. Recebe o texto promocional atual
+socket.on('admin:loadPromoText', (text) => {
+  console.log('[admin.js] Carregando texto promo:', text); // Log
+  if (promoTextInput) {
+    promoTextInput.value = text;
+  }
+});
 
-    let speechTimeout = null;
+// 7. Recebe a Lista da Casa (inicialização)
+socket.on('admin:loadHouseList', (houseList) => {
+    console.log('[admin.js] Recebendo lista da casa inicial:', houseList);
+    renderHouseList(houseList);
+});
 
-    // QUANDO A FALA TERMINAR
-    utterance.onend = () => {
-      console.log('[Player.js] Mensagem falada. Tocando o vídeo...');
-      if (speechTimeout) clearTimeout(speechTimeout);
-      loadAndPlayVideo();
-    };
+// 8. Recebe atualização da Lista da Casa (após add/remove)
+socket.on('admin:updateHouseList', (houseList) => {
+    console.log('[admin.js] Atualizando lista da casa:', houseList);
+    renderHouseList(houseList);
+});
 
-    // QUANDO OCORRER ERRO na fala
-    utterance.onerror = (event) => {
-      console.error('[Player.js] Erro na síntese de fala:', event.error);
-      if (speechTimeout) clearTimeout(speechTimeout);
-      console.log('[Player.js] Erro na fala. Tocando o vídeo mesmo assim...');
-      loadAndPlayVideo();
-    };
 
-    // Inicia a fala
-    try {
-        synth.cancel();
-        setTimeout(() => {
-            synth.speak(utterance);
-            speechTimeout = setTimeout(() => {
-                console.warn('[Player.js] Timeout da fala atingido. Forçando o play do vídeo.');
-                synth.cancel();
-                loadAndPlayVideo();
-            }, 8000); // Timeout de 8 segundos
-        }, 100);
-
-    } catch (e) {
-        console.error('[Player.js] Erro ao chamar synth.speak:', e);
-        if (speechTimeout) clearTimeout(speechTimeout);
-        loadAndPlayVideo();
+// Função para renderizar a Lista da Casa
+function renderHouseList(list) {
+    if (!houseListUl || !houseListEmptyMsg) {
+        console.error("Erro: Elementos da Lista da Casa (houseListUl ou houseListEmptyMsg) não encontrados no DOM.");
+        return;
     }
 
-  } else {
-    // Sem mensagem ou API de fala indisponível
-    if (message && !synth) console.warn('[Player.js] Mensagem recebida, mas API de Fala não está disponível.');
-    console.log('[Player.js] Tocando vídeo diretamente.');
-    loadAndPlayVideo();
-  }
+    if (!list || list.length === 0) {
+        houseListUl.innerHTML = ''; // Limpa
+        houseListEmptyMsg.style.display = 'block'; // Mostra msg de vazio
+    } else {
+        houseListEmptyMsg.style.display = 'none'; // Esconde msg de vazio
+        houseListUl.innerHTML = list.map(item => `
+            <li class="house-list-item">
+                <span>${item.title}</span>
+                <button class="remove-house-list-btn" data-id="${item.id}" title="Remover da lista">❌</button>
+            </li>
+        `).join('');
+    }
 }
