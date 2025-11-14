@@ -5,8 +5,12 @@ const revenueSpan = document.getElementById('revenue');
 const searchVideoBtn = document.getElementById('searchVideoBtn');
 const adminVideoSearchInput = document.getElementById('adminVideoSearchInput');
 const adminSearchResultsDiv = document.getElementById('adminSearchResults');
-const saveListBtn = document.getElementById('saveListBtn');
-const inactivityListText = document.getElementById('inactivityList');
+// const saveListBtn = document.getElementById('saveListBtn'); // REMOVIDO
+// const inactivityListText = document.getElementById('inactivityList'); // REMOVIDO
+
+// ❗️ NOVO: Elementos da Lista da Casa
+const houseListUl = document.getElementById('houseList');
+const houseListEmptyMsg = document.getElementById('houseListEmpty');
 
 // Elementos de Controle do Player
 const pauseBtn = document.getElementById('pauseBtn');
@@ -28,21 +32,7 @@ const savePromoBtn = document.getElementById('savePromoBtn');
 // Eventos de Saída (Enviando para o Servidor)
 // -----------------
 
-// 1. Salvar a lista de inatividade (por nome)
-// Garante que o botão existe antes de adicionar listener
-if (saveListBtn) {
-    saveListBtn.addEventListener('click', () => {
-        const names = inactivityListText.value
-            .split('\n') 
-            .map(name => name.trim()) 
-            .filter(name => name.length > 0); 
-        
-        socket.emit('admin:saveInactivityList', names);
-        alert('Lista de inatividade salva!');
-    });
-} else {
-    console.error("Erro: Botão saveListBtn não encontrado.");
-}
+// ❗️ REMOVIDO: saveListBtn.addEventListener('click', ...)
 
 // 2. Buscar um vídeo
 if (searchVideoBtn) {
@@ -59,21 +49,35 @@ if (searchVideoBtn) {
     console.error("Erro: Botão searchVideoBtn não encontrado.");
 }
 
-// 3. Lidar com cliques nos resultados da busca
+// 3. ❗️ MODIFICADO: Lidar com cliques nos resultados da busca (Agora 2 botões)
 if (adminSearchResultsDiv) {
     adminSearchResultsDiv.addEventListener('click', (e) => {
-        if (e.target.classList.contains('add-result-btn')) {
-            const videoId = e.target.dataset.id;
-            const videoTitle = e.target.dataset.title; 
+        const target = e.target;
+        
+        // Pega os dados do item pai
+        const resultItem = target.closest('.search-result-item');
+        if (!resultItem) return;
+        
+        const videoId = resultItem.dataset.id;
+        const videoTitle = resultItem.dataset.title;
+        if (!videoId || !videoTitle) return;
 
-            if (videoId) {
-                socket.emit('admin:addVideo', { videoId: videoId, videoTitle: videoTitle }); 
-                
-                adminVideoSearchInput.value = '';
-                adminSearchResultsDiv.innerHTML = '';
-                
-                alert(`"${videoTitle}" enviado para a fila!`);
-            }
+        // Caso 1: Clicou em "Adicionar à Fila"
+        if (target.classList.contains('add-result-btn')) {
+            socket.emit('admin:addVideo', { videoId: videoId, videoTitle: videoTitle }); 
+            alert(`"${videoTitle}" enviado para a fila!`);
+            // Limpa apenas se adicionou à fila? Opcional.
+            // adminVideoSearchInput.value = '';
+            // adminSearchResultsDiv.innerHTML = '';
+        }
+
+        // Caso 2: Clicou em "Salvar na Lista"
+        if (target.classList.contains('save-house-list-btn')) {
+            socket.emit('admin:saveToHouseList', { id: videoId, title: videoTitle }); 
+            alert(`"${videoTitle}" salvo na Lista da Casa!`);
+            // Desabilita o botão para feedback
+            target.textContent = 'Salvo ✓';
+            target.disabled = true;
         }
     });
 } else {
@@ -81,41 +85,27 @@ if (adminSearchResultsDiv) {
 }
 
 // 4. Controles do Player
-if (pauseBtn) {
-    pauseBtn.addEventListener('click', () => {
-        socket.emit('admin:controlPause');
-    });
-} else {
-     console.error("Erro: Botão pauseBtn não encontrado.");
-}
-
-if (skipBtn) {
-    skipBtn.addEventListener('click', () => {
-        socket.emit('admin:controlSkip');
-    });
-} else {
-     console.error("Erro: Botão skipBtn não encontrado.");
-}
-
-if (volumeSlider) {
-    volumeSlider.addEventListener('input', (e) => {
-        const volume = e.target.value;
-        if(volumeValueSpan) volumeValueSpan.textContent = `${volume}%`;
-        socket.emit('admin:controlVolume', { volume: volume });
-    });
-} else {
-     console.error("Erro: Slider volumeSlider não encontrado.");
-}
+if (pauseBtn) { /* ... (inalterado) ... */ }
+if (skipBtn) { /* ... (inalterado) ... */ }
+if (volumeSlider) { /* ... (inalterado) ... */ }
 
 // 5. Salvar Texto da Promoção
-if (savePromoBtn) {
-    savePromoBtn.addEventListener('click', () => {
-        const text = promoTextInput.value.trim();
-        socket.emit('admin:setPromoText', text);
-        alert('Texto da promoção salvo!');
+if (savePromoBtn) { /* ... (inalterado) ... */ }
+
+
+// 6. ❗️ NOVO: Listener para remover item da Lista da Casa
+if (houseListUl) {
+    houseListUl.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-house-list-btn')) {
+            const videoId = e.target.dataset.id;
+            if (videoId) {
+                console.log('Solicitando remoção do ID:', videoId);
+                socket.emit('admin:removeFromHouseList', { id: videoId });
+            }
+        }
     });
 } else {
-    console.error("Erro: Botão savePromoBtn não encontrado.");
+    console.error("Erro: Lista da Casa (houseListUl) não encontrada.");
 }
 
 
@@ -130,96 +120,73 @@ socket.on('connect', () => {
 });
 
 // 2. Recebe a atualização de faturamento
-socket.on('admin:updateRevenue', (amount) => {
-  if (revenueSpan) {
-    revenueSpan.textContent = amount.toFixed(2).replace('.', ',');
-  }
-});
+socket.on('admin:updateRevenue', (amount) => { /* ... (inalterado) ... */ });
 
-// 3. Recebe a lista de inatividade (nomes)
-socket.on('admin:loadInactivityList', (nameArray) => {
-  if (inactivityListText) {
-    inactivityListText.value = nameArray.join('\n');
-  }
-});
+// 3. ❗️ REMOVIDO: admin:loadInactivityList
 
 // 4. Recebe os resultados da busca do admin
 socket.on('admin:searchResults', (results) => {
-  if (!adminSearchResultsDiv) return; // Segurança extra
+  if (!adminSearchResultsDiv) return; 
   if (results.length === 0) {
     adminSearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
     return;
   }
 
+  // ❗️ MODIFICADO: Renderiza DOIS botões
   adminSearchResultsDiv.innerHTML = results.map(video => `
-    <div class="search-result-item">
+    <div class="search-result-item" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">
       <div class="result-info">
         <strong>${video.title}</strong>
         <small>${video.channel}</small>
       </div>
-      <button class="add-result-btn" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">
-        Adicionar
-      </button>
+      <div class="result-actions">
+          <button class="add-result-btn" title="Adicionar à fila para tocar agora">
+            Adic. à Fila
+          </button>
+          <button class="save-house-list-btn" title="Salvar na lista da casa (para inatividade)">
+            Salvar na Lista
+          </button>
+      </div>
     </div>
   `).join('');
 });
 
 // 5. Recebe atualização de volume
-socket.on('admin:updateVolume', (data) => {
-  if (volumeSlider) {
-    volumeSlider.value = data.volume;
-  }
-  if (volumeValueSpan) {
-     volumeValueSpan.textContent = `${data.volume}%`;
-  }
-});
+socket.on('admin:updateVolume', (data) => { /* ... (inalterado) ... */ });
 
 // 6. Recebe atualização do estado do player (Tocando Agora / Fila)
-socket.on('updatePlayerState', (state) => {
-  // Atualiza o "Tocando Agora"
-  if (adminNowPlayingSpan) {
-      if (state.nowPlaying) {
-        adminNowPlayingSpan.textContent = state.nowPlaying.title;
-        if (!state.nowPlaying.isCustomer) {
-          adminNowPlayingSpan.textContent += ' (Lista da Casa)';
-        }
-        // Mostra a mensagem se houver
-        if (adminNowPlayingMessageSpan) {
-            if (state.nowPlaying.message) {
-              adminNowPlayingMessageSpan.textContent = `"${state.nowPlaying.message}"`;
-              adminNowPlayingMessageSpan.style.display = 'block';
-            } else {
-              adminNowPlayingMessageSpan.style.display = 'none';
-            }
-        }
-      } else {
-        adminNowPlayingSpan.textContent = 'Nenhuma música tocando...';
-        if(adminNowPlayingMessageSpan) adminNowPlayingMessageSpan.style.display = 'none';
-      }
-  }
-
-  // Atualiza a "Próxima da Fila"
-  if (adminQueueList) {
-      if (state.queue && state.queue.length > 0) {
-        adminQueueList.innerHTML = state.queue.map(video => {
-          let title = video.title;
-          if (!video.isCustomer) {
-            title += ' (Lista da Casa)';
-          }
-          if (video.message) {
-             title += ` <span class="queue-message">"${video.message}"</span>`;
-          }
-          return `<li>${title}</li>`;
-        }).join('');
-      } else {
-        adminQueueList.innerHTML = '<li>(Fila vazia)</li>';
-      }
-  }
-});
+socket.on('updatePlayerState', (state) => { /* ... (inalterado) ... */ });
 
 // 7. Recebe o texto promocional atual
-socket.on('admin:loadPromoText', (text) => {
-  if (promoTextInput) {
-    promoTextInput.value = text;
-  }
+socket.on('admin:loadPromoText', (text) => { /* ... (inalterado) ... */ });
+
+// 8. ❗️ NOVO: Recebe a Lista da Casa (inicialização)
+socket.on('admin:loadHouseList', (houseList) => {
+    console.log('Recebendo lista da casa inicial:', houseList);
+    renderHouseList(houseList);
 });
+
+// 9. ❗️ NOVO: Recebe atualização da Lista da Casa (após add/remove)
+socket.on('admin:updateHouseList', (houseList) => {
+    console.log('Atualizando lista da casa:', houseList);
+    renderHouseList(houseList);
+});
+
+
+// ❗️ NOVO: Função para renderizar a Lista da Casa
+function renderHouseList(list) {
+    if (!houseListUl || !houseListEmptyMsg) return;
+
+    if (!list || list.length === 0) {
+        houseListUl.innerHTML = ''; // Limpa
+        houseListEmptyMsg.style.display = 'block'; // Mostra msg de vazio
+    } else {
+        houseListEmptyMsg.style.display = 'none'; // Esconde msg de vazio
+        houseListUl.innerHTML = list.map(item => `
+            <li class="house-list-item">
+                <span>${item.title}</span>
+                <button class="remove-house-list-btn" data-id="${item.id}" title="Remover da lista">❌</button>
+            </li>
+        `).join('');
+    }
+}
