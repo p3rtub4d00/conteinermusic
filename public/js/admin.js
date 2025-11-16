@@ -8,6 +8,12 @@ const adminSearchResultsDiv = document.getElementById('adminSearchResults');
 const saveListBtn = document.getElementById('saveListBtn');
 const inactivityListText = document.getElementById('inactivityList');
 
+// [MUDANÇA] Novos elementos da busca de inatividade
+const inactivitySearchInput = document.getElementById('inactivitySearchInput');
+const inactivitySearchBtn = document.getElementById('inactivitySearchBtn');
+const inactivitySearchResultsDiv = document.getElementById('inactivitySearchResults');
+// [FIM DA MUDANÇA]
+
 // Elementos de Controle do Player
 const pauseBtn = document.getElementById('pauseBtn');
 const skipBtn = document.getElementById('skipBtn');
@@ -44,7 +50,7 @@ if (saveListBtn) {
     console.error("Erro: Botão saveListBtn não encontrado.");
 }
 
-// 2. Buscar um vídeo
+// 2. Buscar um vídeo (para Fila Principal)
 if (searchVideoBtn) {
     searchVideoBtn.addEventListener('click', () => {
         const query = adminVideoSearchInput.value.trim();
@@ -59,7 +65,24 @@ if (searchVideoBtn) {
     console.error("Erro: Botão searchVideoBtn não encontrado.");
 }
 
-// 3. Lidar com cliques nos resultados da busca
+// [MUDANÇA] Novo listener para a busca da lista de inatividade
+if (inactivitySearchBtn) {
+    inactivitySearchBtn.addEventListener('click', () => {
+        const query = inactivitySearchInput.value.trim();
+        if (!query) {
+            return alert('Por favor, digite um termo para buscar.');
+        }
+
+        inactivitySearchResultsDiv.innerHTML = '<p>Buscando...</p>';
+        // Emite o NOVO evento
+        socket.emit('admin:searchForInactivityList', query); 
+    });
+} else {
+    console.error("Erro: Botão inactivitySearchBtn não encontrado.");
+}
+// [FIM DA MUDANÇA]
+
+// 3. Lidar com cliques nos resultados da busca (Fila Principal)
 if (adminSearchResultsDiv) {
     adminSearchResultsDiv.addEventListener('click', (e) => {
         if (e.target.classList.contains('add-result-btn')) {
@@ -79,6 +102,29 @@ if (adminSearchResultsDiv) {
 } else {
     console.error("Erro: Div adminSearchResults não encontrada.");
 }
+
+// [MUDANÇA] Novo listener de clique para os resultados da lista de inatividade
+if (inactivitySearchResultsDiv) {
+    inactivitySearchResultsDiv.addEventListener('click', (e) => {
+        // Verifica se o clique foi no botão 'add-inactivity-btn'
+        if (e.target.classList.contains('add-inactivity-btn')) {
+            const videoTitle = e.target.dataset.title; // Pega o título
+
+            if (videoTitle && inactivityListText) {
+                // Adiciona o título em uma nova linha no textarea
+                inactivityListText.value += videoTitle + '\n';
+                
+                // Limpa os resultados e o campo de busca
+                inactivitySearchInput.value = '';
+                inactivitySearchResultsDiv.innerHTML = '';
+            }
+        }
+    });
+} else {
+    console.error("Erro: Div inactivitySearchResultsDiv não encontrada.");
+}
+// [FIM DA MUDANÇA]
+
 
 // 4. Controles do Player
 if (pauseBtn) {
@@ -143,7 +189,7 @@ socket.on('admin:loadInactivityList', (nameArray) => {
   }
 });
 
-// 4. Recebe os resultados da busca do admin
+// 4. Recebe os resultados da busca do admin (Fila Principal)
 socket.on('admin:searchResults', (results) => {
   if (!adminSearchResultsDiv) return; // Segurança extra
   if (results.length === 0) {
@@ -163,6 +209,30 @@ socket.on('admin:searchResults', (results) => {
     </div>
   `).join('');
 });
+
+// [MUDANÇA] Novo listener para os resultados da lista de inatividade
+socket.on('admin:inactivitySearchResults', (results) => {
+  if (!inactivitySearchResultsDiv) return; 
+  if (results.length === 0) {
+    inactivitySearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
+    return;
+  }
+
+  // Gera o HTML dos resultados
+  inactivitySearchResultsDiv.innerHTML = results.map(video => `
+    <div class="search-result-item">
+      <div class="result-info">
+        <strong>${video.title}</strong>
+        <small>${video.channel}</small>
+      </div>
+      <button class="add-inactivity-btn" data-title="${video.title.replace(/"/g, "'")}">
+        Adicionar
+      </button>
+    </div>
+  `).join('');
+});
+// [FIM DA MUDANÇA]
+
 
 // 5. Recebe atualização de volume
 socket.on('admin:updateVolume', (data) => {
