@@ -1,10 +1,11 @@
-@@ -1,235 +1,236 @@
+@@ -1,236 +1,237 @@
 const socket = io();
 let player;
 let isPlayerReady = false;
 
 let currentVideoTimer = null;
 const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos em milissegundos
+const MAX_PLAYBACK_TIME = 60 * 60 * 1000; // 5 minutos em milissegundos
 
 let pendingVideo = null;
 
@@ -187,7 +188,6 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
     console.log(`[Player.js] Preparando para falar a mensagem: "${message}"`);
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'pt-BR';
-    utterance.rate = 0.7; // Velocidade ajustada
     utterance.rate = 1.0; // Velocidade ajustada
     utterance.pitch = 1.0;
 
