@@ -1,10 +1,10 @@
-@@ -1,236 +1,237 @@
 const socket = io();
 let player;
 let isPlayerReady = false;
 
 let currentVideoTimer = null;
-const MAX_PLAYBACK_TIME = 60 * 60 * 1000; // 5 minutos em milissegundos
+const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos em milissegundos
+// [MUDANÇA] Linha duplicada abaixo foi removida (era 60 * 60 * 1000)
 
 let pendingVideo = null;
 
@@ -25,7 +25,8 @@ function onYouTubeIframeAPIReady() {
     playerVars: { autoplay: 1, controls: 1, rel: 0 },
     events: {
       'onReady': onPlayerReady,
-      'onStateChange': onPlayerStateChange
+      'onStateChange': onPlayerStateChange,
+      'onError': onPlayerError // [MUDANÇA] Adicionado listener de erro
     }
   });
 }
@@ -85,6 +86,24 @@ function onPlayerStateChange(event) {
       socket.emit('player:videoEnded');
   }
 }
+
+// [MUDANÇA] Nova função para lidar com erros do player
+function onPlayerError(event) {
+    console.error('[Player.js] Erro no player do YouTube detectado:', event.data);
+    console.error('[Player.js] Isso pode ser um vídeo privado, deletado ou bloqueado.');
+    
+    // Cancela qualquer fala ou timer
+    if (synth && synth.speaking) synth.cancel();
+    if (currentVideoTimer) {
+        clearTimeout(currentVideoTimer);
+        currentVideoTimer = null;
+    }
+    
+    // Avisa o servidor para pular este vídeo, como se ele tivesse terminado
+    console.log('[Player.js] Avisando o servidor para pular o vídeo com erro.');
+    socket.emit('player:videoEnded');
+}
+// [FIM DA MUDANÇA]
 
 // 4. Ouve por comandos do servidor
 socket.on('connect', () => console.log('[Player.js] Conectado ao servidor'));
@@ -233,4 +252,3 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
   }
 
 }
-
