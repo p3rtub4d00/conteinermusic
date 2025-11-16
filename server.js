@@ -55,7 +55,8 @@ async function fetchVideoIdByName(name) {
     }
     console.warn(`Nenhum resultado de vídeo válido encontrado para "${name}"`);
     return null;
-  } catch (err) {
+  } catch (err)
+ {
     console.error(`Erro ao buscar ID para "${name}":`, err.message);
     // Considerar um retry simples em caso de erro de rede?
     // if (err.message.includes('network') || err.message.includes('timeout')) { ... }
@@ -465,6 +466,32 @@ io.on("connection", (socket) => {
       socket.emit('admin:searchResults', []);
     }
   });
+
+  // [MUDANÇA] Novo listener para a busca da lista de inatividade
+  socket.on('admin:searchForInactivityList', async (query) => {
+    try {
+      if (!query) return;
+      console.log(`[Server] Admin ${socket.id} buscando para lista: "${query}"`);
+      const result = await youtubeSearchApi.GetListByKeyword(query, false, 5);
+
+      const items = result.items
+        .filter(item => item.id && item.title)
+        .map(item => ({
+          id: item.id,
+          title: item.title,
+          channel: item.channel?.name ?? 'Indefinido'
+        }));
+
+      // Responde em um evento DIFERENTE
+      socket.emit('admin:inactivitySearchResults', items); 
+
+    } catch (err) {
+      console.error('[Server] Erro na busca de inatividade do admin:', err.message);
+      socket.emit('admin:inactivitySearchResults', []); // Envia array vazio em caso de erro
+    }
+  });
+  // [FIM DA MUDANÇA]
+
 
   // ❗️❗️ [LÓGICA CORRIGIDA: admin:addVideo] ❗️❗️
   // Agora sempre adiciona ao final da fila, não interrompe mais.
