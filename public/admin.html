@@ -77,14 +77,20 @@
           
           <section class="card full-height">
             <h2>Lista de Inatividade (Autoplay)</h2>
-            <p>Cole os Nomes das músicas (um por linha). O sistema tocará o primeiro resultado de cada busca.</p>
-            <div class="form-group vertical">
-              <textarea id="inactivityList" rows="10" placeholder="Ex: hino nacional
-Ex: Skank - Vou Deixar"></textarea>
+            <p>Use a busca abaixo para adicionar os vídeos exatos na lista.</p>
+            
+            <div class="form-group">
+              <input type="text" id="inactivitySearchInput" placeholder="Buscar vídeo para a lista...">
+              <button id="inactivitySearchBtn">Buscar</button>
+            </div>
+            <div id="inactivitySearchResults" class="search-results-container" style="margin-top: 10px;">
+              </div>
+            <div class="form-group vertical" style="margin-top: 15px;">
+              <textarea id="inactivityList" rows="10" placeholder="Os nomes dos vídeos adicionados aparecerão aqui..."></textarea>
               <button id="saveListBtn">Salvar Lista</button>
             </div>
           </section>
-        </div>
+          </div>
       </div>
     </main>
   </div>
