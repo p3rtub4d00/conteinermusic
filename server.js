@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import youtubeSearchApi from "youtube-search-api";
 import mongoose from "mongoose";
+import basicAuth from "express-basic-auth"; // Biblioteca de Segurança
 
 dotenv.config();
 
@@ -15,9 +16,9 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- Schemas (Modelos de Dados) ---
 
-// 1. Configurações Globais (Volume, Texto Promo, Faturamento)
+// 1. Configurações Globais
 const ConfigSchema = new mongoose.Schema({
-  key: { type: String, default: 'main_config', unique: true }, // Garante apenas 1 doc de config
+  key: { type: String, default: 'main_config', unique: true },
   dailyRevenue: { type: Number, default: 0.0 },
   currentPromoText: { type: String, default: "Bem-vindo ao Contêiner Music Box!" },
   currentVolume: { type: Number, default: 50 },
@@ -25,7 +26,7 @@ const ConfigSchema = new mongoose.Schema({
 });
 const ConfigModel = mongoose.model('Config', ConfigSchema);
 
-// 2. Lista de Inatividade (Autoplay)
+// 2. Lista de Inatividade
 const InactivitySongSchema = new mongoose.Schema({
   title: String,
   videoId: String,
@@ -33,22 +34,20 @@ const InactivitySongSchema = new mongoose.Schema({
 });
 const InactivityModel = mongoose.model('InactivitySong', InactivitySongSchema);
 
-// 3. Pagamentos (Substitui o objeto em memória)
+// 3. Pagamentos
 const PaymentSchema = new mongoose.Schema({
-  mpPaymentId: { type: String, unique: true }, // ID do Mercado Pago
+  mpPaymentId: { type: String, unique: true },
   socketId: String,
   amount: Number,
   description: String,
   message: String,
-  status: { type: String, default: 'pending' }, // pending, approved, rejected
-  videos: [ // Array de vídeos solicitados
-    {
+  status: { type: String, default: 'pending' },
+  videos: [{
       id: String,
       title: String,
       channel: String,
       thumbnail: String
-    }
-  ],
+  }],
   createdAt: { type: Date, default: Date.now }
 });
 const PaymentModel = mongoose.model('Payment', PaymentSchema);
@@ -60,7 +59,22 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
-app.use(express.static("public"));
+
+// 🔒 SEGURANÇA DO ADMIN 🔒
+// Protege especificamente o arquivo admin.html
+app.use('/admin.html', basicAuth({
+    users: { 
+        [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'admin' 
+    },
+    challenge: true, // Abre o popup do navegador
+    unauthorizedResponse: (req) => {
+        return req.auth 
+            ? 'Credenciais rejeitadas' 
+            : 'Acesso negado: Você precisa de senha para acessar o painel de controle.';
+    }
+}));
+
+app.use(express.static("public")); // Serve os arquivos públicos
 
 const PORT = process.env.PORT || 3000;
 
@@ -69,14 +83,14 @@ const mpClient = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN
 });
 
-// --- Variáveis de Estado em Memória (Fila ativa permanece em memória para performance) ---
+// --- Variáveis de Estado em Memória ---
 const INACTIVITY_TIMEOUT = 5000;
 let inactivityTimer = null;
-let mainQueue = []; // { id, title, isCustomer, message? }
+let mainQueue = []; 
 let nowPlayingInfo = null;
 let isCustomerPlaying = false;
 
-// Helper: Obter ou criar configurações iniciais
+// Helper: Obter ou criar configurações
 async function getConfig() {
   let config = await ConfigModel.findOne({ key: 'main_config' });
   if (!config) {
@@ -146,16 +160,14 @@ function startInactivityTimer() {
   inactivityTimer = setTimeout(async () => {
     if (nowPlayingInfo || mainQueue.length > 0) return;
 
-    // Buscar lista do MongoDB
     const inactivitySongs = await InactivityModel.find({});
 
     if (inactivitySongs.length > 0) {
       console.log('[Server] Inatividade detectada. Carregando lista do banco.');
       
-      // Converte para o formato da fila
       mainQueue = inactivitySongs.map(song => ({
         id: song.videoId,
-        title: song.title || '(Música da Casa)', // Usa o título salvo ou padrão
+        title: song.title || '(Música da Casa)', 
         isCustomer: false,
         message: null
       }));
@@ -199,7 +211,7 @@ app.post("/create-payment", async (req, res) => {
       return res.status(400).json({ ok: false, error: "Dados inválidos." });
     }
 
-    const notification_url = "https://conteinermusic.onrender.com/webhook"; // ALTERE SE NECESSÁRIO
+    const notification_url = "https://conteinermusic.onrender.com/webhook"; 
 
     const payment_data = {
       transaction_amount: Number(amount),
@@ -216,9 +228,8 @@ app.post("/create-payment", async (req, res) => {
       throw new Error('Falha ao gerar QR Code.');
     }
 
-    // SALVAR NO MONGODB
     await PaymentModel.create({
-      mpPaymentId: result.id.toString(), // Converter para string por segurança
+      mpPaymentId: result.id.toString(), 
       socketId: socketId,
       amount: Number(amount),
       description: description,
@@ -255,28 +266,23 @@ app.post("/webhook", async (req, res) => {
 
     if (!paymentId) return res.sendStatus(200);
 
-    // Consulta status real no Mercado Pago
     const payment = new Payment(mpClient);
     const mpPayment = await payment.get({ id: paymentId });
 
     if (mpPayment.status === 'approved') {
-      // Busca no MongoDB
       const dbPayment = await PaymentModel.findOne({ mpPaymentId: paymentId.toString() });
 
       if (dbPayment && dbPayment.status !== 'approved') {
         console.log(`[Server] Pagamento ${paymentId} APROVADO via Webhook.`);
 
-        // 1. Atualiza Status
         dbPayment.status = 'approved';
         await dbPayment.save();
 
-        // 2. Atualiza Faturamento no MongoDB
         const config = await getConfig();
         config.dailyRevenue += dbPayment.amount;
         await config.save();
         io.emit('admin:updateRevenue', config.dailyRevenue);
 
-        // 3. Adiciona à Fila
         isCustomerPlaying = true;
         if (inactivityTimer) clearTimeout(inactivityTimer);
         inactivityTimer = null;
@@ -289,7 +295,6 @@ app.post("/webhook", async (req, res) => {
         }));
 
         if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
-           // Interrompe música da casa
            mainQueue = [...customerVideos, ...mainQueue];
            playNextInQueue();
         } else {
@@ -298,7 +303,6 @@ app.post("/webhook", async (req, res) => {
            else broadcastPlayerState();
         }
 
-        // 4. Notifica Cliente
         if (dbPayment.socketId) {
           const targetSocket = io.sockets.sockets.get(dbPayment.socketId);
           if (targetSocket) targetSocket.emit('paymentConfirmed');
@@ -318,10 +322,8 @@ app.post("/webhook", async (req, res) => {
 io.on("connection", async (socket) => {
   console.log("[Socket] Conectado:", socket.id);
 
-  // Carrega configurações do banco ao conectar
   const config = await getConfig();
   
-  // Envia estado inicial
   socket.emit('updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
   socket.emit('player:updatePromoText', config.currentPromoText);
   
@@ -344,9 +346,8 @@ io.on("connection", async (socket) => {
   socket.on('admin:getList', async () => {
     const freshConfig = await getConfig();
     
-    // Busca nomes da lista de inatividade do banco
     const inactivityList = await InactivityModel.find({});
-    const names = inactivityList.map(item => item.title); // Retorna apenas os nomes para o textarea
+    const names = inactivityList.map(item => item.title);
 
     socket.emit('admin:loadInactivityList', names);
     socket.emit('admin:updateRevenue', freshConfig.dailyRevenue);
@@ -355,12 +356,9 @@ io.on("connection", async (socket) => {
     socket.emit('admin:loadPromoText', freshConfig.currentPromoText);
   });
 
-  // Salvar Lista de Inatividade (Admin)
   socket.on('admin:saveInactivityList', async (nameArray) => {
-    // 1. Limpa coleção atual
     await InactivityModel.deleteMany({});
     
-    // 2. Resolve IDs e salva no banco
     const names = Array.isArray(nameArray) ? nameArray : [];
     const newItems = [];
 
@@ -381,7 +379,6 @@ io.on("connection", async (socket) => {
     if (!isCustomerPlaying && !nowPlayingInfo) startInactivityTimer();
   });
 
-  // Busca para Inatividade (Admin)
   socket.on('admin:searchForInactivityList', async (query) => {
       try {
         const result = await youtubeSearchApi.GetListByKeyword(query, false, 5);
@@ -390,7 +387,6 @@ io.on("connection", async (socket) => {
       } catch(e) { socket.emit('admin:inactivitySearchResults', []); }
   });
 
-  // Busca Normal (Admin)
   socket.on('admin:search', async (query) => {
       try {
         const result = await youtubeSearchApi.GetListByKeyword(query, false, 5);
@@ -399,7 +395,6 @@ io.on("connection", async (socket) => {
       } catch(e) { socket.emit('admin:searchResults', []); }
   });
 
-  // Adicionar Vídeo (Admin)
   socket.on('admin:addVideo', ({ videoId, videoTitle }) => {
     if (videoId) {
       mainQueue.push({ id: videoId, title: videoTitle, isCustomer: false, message: null });
@@ -408,7 +403,6 @@ io.on("connection", async (socket) => {
     }
   });
 
-  // Salvar Texto Promo (Admin)
   socket.on('admin:setPromoText', async (text) => {
     const config = await getConfig();
     config.currentPromoText = text;
@@ -418,7 +412,6 @@ io.on("connection", async (socket) => {
     io.emit('admin:loadPromoText', text);
   });
 
-  // Controles
   socket.on('admin:controlPause', () => io.emit('player:pause'));
   socket.on('admin:controlSkip', () => playNextInQueue());
 
@@ -435,5 +428,5 @@ io.on("connection", async (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🔥 Servidor MongoDB rodando na porta ${PORT}`);
+  console.log(`🔥 Servidor Seguro rodando na porta ${PORT}`);
 });
