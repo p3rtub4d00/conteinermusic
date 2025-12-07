@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import youtubeSearchApi from "youtube-search-api";
 import mongoose from "mongoose";
-import basicAuth from "express-basic-auth"; // Biblioteca de Segurança
+import basicAuth from "express-basic-auth";
 
 dotenv.config();
 
@@ -52,6 +52,14 @@ const PaymentSchema = new mongoose.Schema({
 });
 const PaymentModel = mongoose.model('Payment', PaymentSchema);
 
+// 4. Cache de Busca
+const SearchCacheSchema = new mongoose.Schema({
+  term: { type: String, unique: true },
+  results: Array, 
+  createdAt: { type: Date, default: Date.now, expires: 86400 } // Expira em 24h
+});
+const SearchCacheModel = mongoose.model('SearchCache', SearchCacheSchema);
+
 
 // --- Inicialização do Servidor ---
 const app = express();
@@ -61,12 +69,11 @@ const io = new Server(server);
 app.use(express.json());
 
 // 🔒 SEGURANÇA DO ADMIN 🔒
-// Protege especificamente o arquivo admin.html
 app.use('/admin.html', basicAuth({
     users: { 
-        [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'rafaelRAMOS' 
+        [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'admin' 
     },
-    challenge: true, // Abre o popup do navegador
+    challenge: true,
     unauthorizedResponse: (req) => {
         return req.auth 
             ? 'Credenciais rejeitadas' 
@@ -74,7 +81,7 @@ app.use('/admin.html', basicAuth({
     }
 }));
 
-app.use(express.static("public")); // Serve os arquivos públicos
+app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
 
@@ -90,7 +97,7 @@ let mainQueue = [];
 let nowPlayingInfo = null;
 let isCustomerPlaying = false;
 
-// Helper: Obter ou criar configurações
+// Helpers
 async function getConfig() {
   let config = await ConfigModel.findOne({ key: 'main_config' });
   if (!config) {
@@ -99,7 +106,6 @@ async function getConfig() {
   return config;
 }
 
-// Helper: Buscar ID do YouTube
 async function fetchVideoIdByName(name) {
   if (!name) return null;
   try {
@@ -114,8 +120,7 @@ async function fetchVideoIdByName(name) {
   }
 }
 
-// --- Funções de Controle do Player ---
-
+// Controle do Player
 function broadcastPlayerState() {
   const state = {
     nowPlaying: nowPlayingInfo,
@@ -131,7 +136,6 @@ async function playNextInQueue() {
   if (mainQueue.length > 0) {
     nowPlayingInfo = mainQueue.shift();
     isCustomerPlaying = nowPlayingInfo.isCustomer;
-
     console.log(`[Server] Tocando: ${nowPlayingInfo.title}`);
     
     io.emit('player:playVideo', {
@@ -139,7 +143,6 @@ async function playNextInQueue() {
       title: nowPlayingInfo.title,
       message: nowPlayingInfo.message
     });
-
   } else {
     console.log('[Server] Fila vazia.');
     nowPlayingInfo = null;
@@ -152,7 +155,6 @@ async function playNextInQueue() {
 function startInactivityTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
-
   if (nowPlayingInfo || mainQueue.length > 0) return;
 
   console.log(`[Server] Timer de inatividade (${INACTIVITY_TIMEOUT/1000}s) iniciado...`);
@@ -161,17 +163,14 @@ function startInactivityTimer() {
     if (nowPlayingInfo || mainQueue.length > 0) return;
 
     const inactivitySongs = await InactivityModel.find({});
-
     if (inactivitySongs.length > 0) {
       console.log('[Server] Inatividade detectada. Carregando lista do banco.');
-      
       mainQueue = inactivitySongs.map(song => ({
         id: song.videoId,
         title: song.title || '(Música da Casa)', 
         isCustomer: false,
         message: null
       }));
-
       playNextInQueue();
     } else {
       console.log('[Server] Inatividade, mas banco de inatividade está vazio.');
@@ -187,7 +186,19 @@ app.get("/search", async (req, res) => {
     const query = req.query.q;
     if (!query) return res.status(400).json({ ok: false, error: "Consulta inválida" });
 
+    const lowerQuery = query.toLowerCase().trim();
+
+    // 1. Cache
+    const cachedEntry = await SearchCacheModel.findOne({ term: lowerQuery });
+    if (cachedEntry) {
+        console.log(`[Cache] Retornando resultados para: "${lowerQuery}"`);
+        return res.json({ ok: true, results: cachedEntry.results });
+    }
+
+    // 2. API
+    console.log(`[API] Buscando no YouTube: "${lowerQuery}"`);
     const result = await youtubeSearchApi.GetListByKeyword(query, false, 6);
+    
     const items = result.items
       .filter(item => item.id && item.title)
       .map(item => ({
@@ -197,8 +208,14 @@ app.get("/search", async (req, res) => {
         thumbnail: item.thumbnail?.thumbnails?.[0]?.url || ''
       }));
 
+    // 3. Salvar Cache
+    if (items.length > 0) {
+        await SearchCacheModel.create({ term: lowerQuery, results: items });
+    }
     res.json({ ok: true, results: items });
+
   } catch (err) {
+    console.error("[Search] Erro:", err.message);
     res.status(500).json({ ok: false, error: "Erro interno na busca" });
   }
 });
@@ -206,10 +223,7 @@ app.get("/search", async (req, res) => {
 app.post("/create-payment", async (req, res) => {
   try {
     const { videos, amount, description, message, socketId } = req.body;
-
-    if (!videos || !amount || !socketId) {
-      return res.status(400).json({ ok: false, error: "Dados inválidos." });
-    }
+    if (!videos || !amount || !socketId) return res.status(400).json({ ok: false, error: "Dados inválidos." });
 
     const notification_url = "https://conteinermusic.onrender.com/webhook"; 
 
@@ -237,15 +251,13 @@ app.post("/create-payment", async (req, res) => {
       status: 'pending',
       videos: videos
     });
-
-    console.log(`[Server] Pagamento ${result.id} criado e salvo no MongoDB.`);
+    console.log(`[Server] Pagamento ${result.id} criado.`);
 
     res.json({
       ok: true,
       qr: result.point_of_interaction.transaction_data.qr_code_base64,
       copiaCola: result.point_of_interaction.transaction_data.qr_code
     });
-
   } catch (err) {
     console.error("[Server] Erro Create-Payment:", err.message);
     res.status(500).json({ ok: false, error: err.message });
@@ -263,7 +275,6 @@ app.post("/webhook", async (req, res) => {
         const parts = notification.resource.split('/');
         paymentId = parts[parts.length - 1];
     }
-
     if (!paymentId) return res.sendStatus(200);
 
     const payment = new Payment(mpClient);
@@ -274,7 +285,6 @@ app.post("/webhook", async (req, res) => {
 
       if (dbPayment && dbPayment.status !== 'approved') {
         console.log(`[Server] Pagamento ${paymentId} APROVADO via Webhook.`);
-
         dbPayment.status = 'approved';
         await dbPayment.save();
 
@@ -288,10 +298,7 @@ app.post("/webhook", async (req, res) => {
         inactivityTimer = null;
 
         const customerVideos = dbPayment.videos.map(v => ({
-          id: v.id,
-          title: v.title,
-          isCustomer: true,
-          message: dbPayment.message
+          id: v.id, title: v.title, isCustomer: true, message: dbPayment.message
         }));
 
         if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
@@ -309,7 +316,6 @@ app.post("/webhook", async (req, res) => {
         }
       }
     }
-
     res.sendStatus(200);
   } catch (err) {
     console.error("[Server] Webhook Error:", err);
@@ -321,13 +327,11 @@ app.post("/webhook", async (req, res) => {
 
 io.on("connection", async (socket) => {
   console.log("[Socket] Conectado:", socket.id);
-
   const config = await getConfig();
   
   socket.emit('updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
   socket.emit('player:updatePromoText', config.currentPromoText);
   
-  // --- Player (TV) ---
   socket.on('player:ready', async () => {
     const freshConfig = await getConfig();
     socket.emit('player:setInitialState', { 
@@ -338,14 +342,17 @@ io.on("connection", async (socket) => {
     if (!nowPlayingInfo) startInactivityTimer();
   });
 
-  socket.on('player:videoEnded', () => {
-    playNextInQueue();
-  });
+  socket.on('player:videoEnded', () => playNextInQueue());
 
-  // --- Admin ---
+  // 🔽🔽🔽 [NOVO: OUVINTE DO PING] 🔽🔽🔽
+  socket.on('player:ping', () => {
+    console.log(`[Ping] Keep-alive recebido do player: ${socket.id}`);
+  });
+  // 🔼🔼🔼
+
+  // Admin Events
   socket.on('admin:getList', async () => {
     const freshConfig = await getConfig();
-    
     const inactivityList = await InactivityModel.find({});
     const names = inactivityList.map(item => item.title);
 
@@ -358,24 +365,15 @@ io.on("connection", async (socket) => {
 
   socket.on('admin:saveInactivityList', async (nameArray) => {
     await InactivityModel.deleteMany({});
-    
     const names = Array.isArray(nameArray) ? nameArray : [];
     const newItems = [];
-
     for (const name of names) {
       if(name.trim().length > 0) {
          const id = await fetchVideoIdByName(name);
-         if (id) {
-           newItems.push({ title: name, videoId: id });
-         }
+         if (id) newItems.push({ title: name, videoId: id });
       }
     }
-
-    if (newItems.length > 0) {
-      await InactivityModel.insertMany(newItems);
-      console.log(`[Admin] Salvos ${newItems.length} itens na inatividade.`);
-    }
-
+    if (newItems.length > 0) await InactivityModel.insertMany(newItems);
     if (!isCustomerPlaying && !nowPlayingInfo) startInactivityTimer();
   });
 
@@ -407,7 +405,6 @@ io.on("connection", async (socket) => {
     const config = await getConfig();
     config.currentPromoText = text;
     await config.save();
-    
     io.emit('player:updatePromoText', text);
     io.emit('admin:loadPromoText', text);
   });
@@ -420,14 +417,11 @@ io.on("connection", async (socket) => {
     config.currentVolume = parseInt(volume);
     config.isMuted = (config.currentVolume === 0);
     await config.save();
-
     io.emit('admin:updateVolume', { volume: config.currentVolume, isMuted: config.isMuted });
     io.emit('player:setVolume', { volume: config.currentVolume, isMuted: config.isMuted });
   });
-
 });
 
 server.listen(PORT, () => {
-  console.log(`🔥 Servidor Seguro rodando na porta ${PORT}`);
+  console.log(`🔥 Servidor COMPLETO rodando na porta ${PORT}`);
 });
-
