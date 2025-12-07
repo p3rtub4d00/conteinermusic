@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Contêiner Music Box</title>
-  <link rel="stylesheet" href="/css/admin.css"> 
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
   
@@ -20,7 +21,7 @@
           <section class="card">
             <h2>Faturamento do Dia</h2>
             <p class="revenue">R$ <span id="revenue">0.00</span></p>
-            <small>*O faturamento é rastreado apenas por pagamentos PIX confirmados e reinicia quando o servidor é reiniciado.</small>
+            <small>*Rastreado por pagamentos confirmados. Persistente no banco de dados.</small>
           </section>
 
           <section class="card">
@@ -38,18 +39,14 @@
 
           <section class="card" id="queue-card">
             <h2>Fila de Reprodução</h2>
-            
             <div class="now-playing-admin">
               <strong>Tocando Agora:</strong>
               <span id="adminNowPlaying">Nenhuma música tocando...</span>
               <span id="adminNowPlayingMessage" class="playing-message"></span> 
             </div>
-            
             <div class="queue-list-admin">
               <strong>Próximos na Fila:</strong>
-              <ul id="adminQueueList">
-                <li>(Fila vazia)</li>
-              </ul>
+              <ul id="adminQueueList"><li>(Fila vazia)</li></ul>
             </div>
           </section>
         </div>
@@ -62,8 +59,7 @@
               <input type="text" id="adminVideoSearchInput" placeholder="Ex: Zeca Pagodinho - Deixa a Vida Me Levar">
               <button id="searchVideoBtn">Buscar</button>
             </div>
-            <div id="adminSearchResults" class="search-results-container">
-              </div>
+            <div id="adminSearchResults" class="search-results-container"></div>
           </section>
 
           <section class="card">
@@ -78,24 +74,23 @@
           <section class="card full-height">
             <h2>Lista de Inatividade (Autoplay)</h2>
             <p>Use a busca abaixo para adicionar os vídeos exatos na lista.</p>
-            
             <div class="form-group">
               <input type="text" id="inactivitySearchInput" placeholder="Buscar vídeo para a lista...">
               <button id="inactivitySearchBtn">Buscar</button>
             </div>
-            <div id="inactivitySearchResults" class="search-results-container" style="margin-top: 10px;">
-              </div>
+            <div id="inactivitySearchResults" class="search-results-container" style="margin-top: 10px;"></div>
             <div class="form-group vertical" style="margin-top: 15px;">
               <textarea id="inactivityList" rows="10" placeholder="Os nomes dos vídeos adicionados aparecerão aqui..."></textarea>
               <button id="saveListBtn">Salvar Lista</button>
             </div>
           </section>
-          </div>
+        </div>
       </div>
     </main>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>
