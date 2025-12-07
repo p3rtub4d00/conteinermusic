@@ -7,82 +7,76 @@ const adminVideoSearchInput = document.getElementById('adminVideoSearchInput');
 const adminSearchResultsDiv = document.getElementById('adminSearchResults');
 const saveListBtn = document.getElementById('saveListBtn');
 const inactivityListText = document.getElementById('inactivityList');
-
-// [MUDANÇA] Novos elementos da busca de inatividade
 const inactivitySearchInput = document.getElementById('inactivitySearchInput');
 const inactivitySearchBtn = document.getElementById('inactivitySearchBtn');
 const inactivitySearchResultsDiv = document.getElementById('inactivitySearchResults');
-// [FIM DA MUDANÇA]
-
-// Elementos de Controle do Player
 const pauseBtn = document.getElementById('pauseBtn');
 const skipBtn = document.getElementById('skipBtn');
 const volumeSlider = document.getElementById('volumeSlider');
 const volumeValueSpan = document.getElementById('volumeValue');
-
-// Elementos da Fila
 const adminNowPlayingSpan = document.getElementById('adminNowPlaying');
 const adminNowPlayingMessageSpan = document.getElementById('adminNowPlayingMessage'); 
 const adminQueueList = document.getElementById('adminQueueList');
-
-// Elementos da Promoção
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
 
+// --- ✨ NOVA FUNÇÃO: Toastify Helper (Igual ao main.js) ---
+function showToast(message, type = 'info') {
+    let backgroundColor;
+    if (type === 'error') backgroundColor = "linear-gradient(to right, #ff5f6d, #ffc371)";
+    else if (type === 'success') backgroundColor = "linear-gradient(to right, #00b09b, #96c93d)";
+    else backgroundColor = "linear-gradient(to right, #007bff, #00c6ff)";
 
-// -----------------
-// Eventos de Saída (Enviando para o Servidor)
-// -----------------
-
-// 1. Salvar a lista de inatividade (por nome)
-// Garante que o botão existe antes de adicionar listener
-if (saveListBtn) {
-    saveListBtn.addEventListener('click', () => {
-        const names = inactivityListText.value
-            .split('\n') 
-            .map(name => name.trim()) 
-            .filter(name => name.length > 0); 
-        
-        socket.emit('admin:saveInactivityList', names);
-        alert('Lista de inatividade salva!');
-    });
-} else {
-    console.error("Erro: Botão saveListBtn não encontrado.");
+    Toastify({
+        text: message,
+        duration: 3000,
+        close: true,
+        gravity: "top",
+        position: "center",
+        stopOnFocus: true,
+        style: { background: backgroundColor, borderRadius: "8px" },
+    }).showToast();
 }
 
-// 2. Buscar um vídeo (para Fila Principal)
+// -----------------
+// Eventos de Saída
+// -----------------
+
+// 1. Salvar lista de inatividade
+if (saveListBtn) {
+    saveListBtn.addEventListener('click', () => {
+        const names = inactivityListText.value.split('\n').map(name => name.trim()).filter(name => name.length > 0);
+        socket.emit('admin:saveInactivityList', names);
+        // 🔄 SUBSTITUIÇÃO DE ALERT
+        showToast('Lista de inatividade salva no banco de dados!', 'success');
+    });
+}
+
+// 2. Buscar vídeo (Fila)
 if (searchVideoBtn) {
     searchVideoBtn.addEventListener('click', () => {
         const query = adminVideoSearchInput.value.trim();
-        if (!query) {
-            return alert('Por favor, digite um termo para buscar.');
-        }
+        // 🔄 SUBSTITUIÇÃO DE ALERT
+        if (!query) return showToast('Por favor, digite um termo para buscar.', 'error');
 
         adminSearchResultsDiv.innerHTML = '<p>Buscando...</p>';
         socket.emit('admin:search', query);
     });
-} else {
-    console.error("Erro: Botão searchVideoBtn não encontrado.");
 }
 
-// [MUDANÇA] Novo listener para a busca da lista de inatividade
+// Busca Lista Inatividade
 if (inactivitySearchBtn) {
     inactivitySearchBtn.addEventListener('click', () => {
         const query = inactivitySearchInput.value.trim();
-        if (!query) {
-            return alert('Por favor, digite um termo para buscar.');
-        }
+        // 🔄 SUBSTITUIÇÃO DE ALERT
+        if (!query) return showToast('Digite algo para buscar.', 'error');
 
         inactivitySearchResultsDiv.innerHTML = '<p>Buscando...</p>';
-        // Emite o NOVO evento
         socket.emit('admin:searchForInactivityList', query); 
     });
-} else {
-    console.error("Erro: Botão inactivitySearchBtn não encontrado.");
 }
-// [FIM DA MUDANÇA]
 
-// 3. Lidar com cliques nos resultados da busca (Fila Principal)
+// 3. Adicionar vídeo à fila
 if (adminSearchResultsDiv) {
     adminSearchResultsDiv.addEventListener('click', (e) => {
         if (e.target.classList.contains('add-result-btn')) {
@@ -91,169 +85,123 @@ if (adminSearchResultsDiv) {
 
             if (videoId) {
                 socket.emit('admin:addVideo', { videoId: videoId, videoTitle: videoTitle }); 
-                
                 adminVideoSearchInput.value = '';
                 adminSearchResultsDiv.innerHTML = '';
-                
-                alert(`"${videoTitle}" enviado para a fila!`);
+                // 🔄 SUBSTITUIÇÃO DE ALERT
+                showToast(`"${videoTitle}" adicionado à fila!`, 'success');
             }
         }
     });
-} else {
-    console.error("Erro: Div adminSearchResults não encontrada.");
 }
 
-// [MUDANÇA] Novo listener de clique para os resultados da lista de inatividade
+// Adicionar à lista de inatividade (UI apenas)
 if (inactivitySearchResultsDiv) {
     inactivitySearchResultsDiv.addEventListener('click', (e) => {
-        // Verifica se o clique foi no botão 'add-inactivity-btn'
         if (e.target.classList.contains('add-inactivity-btn')) {
-            const videoTitle = e.target.dataset.title; // Pega o título
-
+            const videoTitle = e.target.dataset.title;
             if (videoTitle && inactivityListText) {
-                // Adiciona o título em uma nova linha no textarea
                 inactivityListText.value += videoTitle + '\n';
-                
-                // Limpa os resultados e o campo de busca
                 inactivitySearchInput.value = '';
                 inactivitySearchResultsDiv.innerHTML = '';
+                showToast('Adicionado ao campo de texto. Clique em "Salvar Lista" para confirmar.', 'info');
             }
         }
     });
-} else {
-    console.error("Erro: Div inactivitySearchResultsDiv não encontrada.");
 }
-// [FIM DA MUDANÇA]
-
 
 // 4. Controles do Player
 if (pauseBtn) {
     pauseBtn.addEventListener('click', () => {
         socket.emit('admin:controlPause');
+        showToast('Comando de Pausa/Play enviado.', 'info');
     });
-} else {
-     console.error("Erro: Botão pauseBtn não encontrado.");
 }
-
 if (skipBtn) {
     skipBtn.addEventListener('click', () => {
-        socket.emit('admin:controlSkip');
+        if(confirm('Tem certeza que deseja pular a música atual?')) {
+            socket.emit('admin:controlSkip');
+            showToast('Pulando música...', 'success');
+        }
     });
-} else {
-     console.error("Erro: Botão skipBtn não encontrado.");
 }
-
 if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
         const volume = e.target.value;
         if(volumeValueSpan) volumeValueSpan.textContent = `${volume}%`;
         socket.emit('admin:controlVolume', { volume: volume });
     });
-} else {
-     console.error("Erro: Slider volumeSlider não encontrado.");
 }
 
-// 5. Salvar Texto da Promoção
+// 5. Salvar Texto Promo
 if (savePromoBtn) {
     savePromoBtn.addEventListener('click', () => {
         const text = promoTextInput.value.trim();
         socket.emit('admin:setPromoText', text);
-        alert('Texto da promoção salvo!');
+        // 🔄 SUBSTITUIÇÃO DE ALERT
+        showToast('Texto da promoção atualizado na TV!', 'success');
     });
-} else {
-    console.error("Erro: Botão savePromoBtn não encontrado.");
 }
 
-
 // -----------------
-// Eventos de Entrada (Ouvindo do Servidor)
+// Eventos de Entrada
 // -----------------
 
-// 1. Ao conectar, pede os dados atuais
 socket.on('connect', () => {
   console.log('Conectado ao servidor como admin.');
   socket.emit('admin:getList');
 });
 
-// 2. Recebe a atualização de faturamento
 socket.on('admin:updateRevenue', (amount) => {
-  if (revenueSpan) {
-    revenueSpan.textContent = amount.toFixed(2).replace('.', ',');
-  }
+  if (revenueSpan) revenueSpan.textContent = amount.toFixed(2).replace('.', ',');
 });
 
-// 3. Recebe a lista de inatividade (nomes)
 socket.on('admin:loadInactivityList', (nameArray) => {
-  if (inactivityListText) {
-    inactivityListText.value = nameArray.join('\n');
-  }
+  if (inactivityListText) inactivityListText.value = nameArray.join('\n');
 });
 
-// 4. Recebe os resultados da busca do admin (Fila Principal)
 socket.on('admin:searchResults', (results) => {
-  if (!adminSearchResultsDiv) return; // Segurança extra
+  if (!adminSearchResultsDiv) return;
   if (results.length === 0) {
     adminSearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
     return;
   }
-
   adminSearchResultsDiv.innerHTML = results.map(video => `
     <div class="search-result-item">
       <div class="result-info">
         <strong>${video.title}</strong>
         <small>${video.channel}</small>
       </div>
-      <button class="add-result-btn" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">
-        Adicionar
-      </button>
+      <button class="add-result-btn" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">Adicionar</button>
     </div>
   `).join('');
 });
 
-// [MUDANÇA] Novo listener para os resultados da lista de inatividade
 socket.on('admin:inactivitySearchResults', (results) => {
   if (!inactivitySearchResultsDiv) return; 
   if (results.length === 0) {
     inactivitySearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
     return;
   }
-
-  // Gera o HTML dos resultados
   inactivitySearchResultsDiv.innerHTML = results.map(video => `
     <div class="search-result-item">
       <div class="result-info">
         <strong>${video.title}</strong>
         <small>${video.channel}</small>
       </div>
-      <button class="add-inactivity-btn" data-title="${video.title.replace(/"/g, "'")}">
-        Adicionar
-      </button>
+      <button class="add-inactivity-btn" data-title="${video.title.replace(/"/g, "'")}">Adicionar</button>
     </div>
   `).join('');
 });
-// [FIM DA MUDANÇA]
 
-
-// 5. Recebe atualização de volume
 socket.on('admin:updateVolume', (data) => {
-  if (volumeSlider) {
-    volumeSlider.value = data.volume;
-  }
-  if (volumeValueSpan) {
-     volumeValueSpan.textContent = `${data.volume}%`;
-  }
+  if (volumeSlider) volumeSlider.value = data.volume;
+  if (volumeValueSpan) volumeValueSpan.textContent = `${data.volume}%`;
 });
 
-// 6. Recebe atualização do estado do player (Tocando Agora / Fila)
 socket.on('updatePlayerState', (state) => {
-  // Atualiza o "Tocando Agora"
   if (adminNowPlayingSpan) {
       if (state.nowPlaying) {
-        adminNowPlayingSpan.textContent = state.nowPlaying.title;
-        if (!state.nowPlaying.isCustomer) {
-          adminNowPlayingSpan.textContent += ' (Lista da Casa)';
-        }
-        // Mostra a mensagem se houver
+        adminNowPlayingSpan.textContent = state.nowPlaying.title + (!state.nowPlaying.isCustomer ? ' (Lista da Casa)' : '');
         if (adminNowPlayingMessageSpan) {
             if (state.nowPlaying.message) {
               adminNowPlayingMessageSpan.textContent = `"${state.nowPlaying.message}"`;
@@ -268,17 +216,11 @@ socket.on('updatePlayerState', (state) => {
       }
   }
 
-  // Atualiza a "Próxima da Fila"
   if (adminQueueList) {
       if (state.queue && state.queue.length > 0) {
         adminQueueList.innerHTML = state.queue.map(video => {
-          let title = video.title;
-          if (!video.isCustomer) {
-            title += ' (Lista da Casa)';
-          }
-          if (video.message) {
-             title += ` <span class="queue-message">"${video.message}"</span>`;
-          }
+          let title = video.title + (!video.isCustomer ? ' (Lista da Casa)' : '');
+          if (video.message) title += ` <span class="queue-message">"${video.message}"</span>`;
           return `<li>${title}</li>`;
         }).join('');
       } else {
@@ -287,9 +229,6 @@ socket.on('updatePlayerState', (state) => {
   }
 });
 
-// 7. Recebe o texto promocional atual
 socket.on('admin:loadPromoText', (text) => {
-  if (promoTextInput) {
-    promoTextInput.value = text;
-  }
+  if (promoTextInput) promoTextInput.value = text;
 });
