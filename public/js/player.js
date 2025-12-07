@@ -252,3 +252,12 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
   }
 
 }
+// 🔽🔽🔽 [NOVO: MANTÉM O SERVIDOR ACORDADO] 🔽🔽🔽
+// Envia um sinal a cada 5 minutos para o Render não dormir
+setInterval(() => {
+    if (socket && socket.connected) {
+        console.log('[Player.js] Enviando ping para o servidor...');
+        socket.emit('player:ping');
+    }
+}, 5 * 60 * 1000);
+
