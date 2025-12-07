@@ -5,35 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contêiner Music Box</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
 
   <div class="container">
-    <header>
+     <header>
       <img src="/images/logo.png" alt="Contêiner Music Box" id="logo">
       <h1>CONTEINER MUSIC BOX</h1>
-      <p class="welcome-message">
-        Bem-vindo! Escolha seu pacote e selecione suas músicas.
-      </p>
+      <p class="welcome-message">Bem-vindo! Escolha seu pacote e selecione suas músicas.</p>
     </header>
-
+    
     <div id="package-selection">
-      <div class="package-option">
-        <label>
-          <input type="radio" name="package" value="3" data-price="2.00" data-limit="3" checked>
-          <span>
-            Pacote 3 Músicas<br><small>(R$ 2,00)</small>
-          </span>
-        </label>
-      </div>
-      <div class="package-option">
-        <label>
-          <input type="radio" name="package" value="5" data-price="3.00" data-limit="5">
-          <span>
-            Pacote 5 Músicas<br><small>(R$ 3,00)</small>
-          </span>
-        </label>
-      </div>
+        <div class="package-option">
+            <label>
+              <input type="radio" name="package" value="3" data-price="2.00" data-limit="3" checked>
+              <span>Pacote 3 Músicas<br><small>(R$ 2,00)</small></span>
+            </label>
+        </div>
+        <div class="package-option">
+            <label>
+              <input type="radio" name="package" value="5" data-price="3.00" data-limit="5">
+              <span>Pacote 5 Músicas<br><small>(R$ 3,00)</small></span>
+            </label>
+        </div>
     </div>
 
     <div id="now-playing-area" style="display: none;">
@@ -47,20 +42,17 @@
         <button id="searchBtn">Buscar</button>
       </div>
 
-      <div id="results-wrapper">
-        <div id="results">
-          </div>
-      </div>
+      <div id="results-wrapper"><div id="results"></div></div>
 
       <div id="selection-area">
         <h2>Sua seleção (<span id="count">0</span>/<span id="limit">3</span>)</h2>
-        <ul id="selected">
-          </ul>
+        <ul id="selected"></ul>
       </div>
 
       <div id="action-buttons">
         <button id="pagarBtn" class="btn-primary" disabled>Pagar R$ 2,00 (PIX)</button>
-        </div>
+      </div>
+      
       <div id="pixArea" style="display:none;">
         <h2 id="pixTitle">Faça o PIX</h2>
         <img id="qrCode" alt="QR Code PIX" style="display: block;">
@@ -71,7 +63,6 @@
         </div>
         <p id="paymentStatusMsg" style="display: none;"></p>
       </div>
-
     </main>
   </div>
 
@@ -86,12 +77,13 @@
       </div>
       <div id="modalMessageInputArea" style="display: none;">
         <textarea id="modalMessageText" placeholder="Digite sua mensagem aqui (máx. 100 caracteres)..." maxlength="100"></textarea>
-        <button id="modalBtnConfirm" class="btn-modal btn-modal-confirm">Confirmar e Pagar R$ X</button>
+        <button id="modalBtnConfirm" class="btn-modal btn-modal-confirm">Confirmar e Pagar</button>
       </div>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
