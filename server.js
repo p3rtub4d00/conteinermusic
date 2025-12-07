@@ -64,7 +64,7 @@ app.use(express.json());
 // Protege especificamente o arquivo admin.html
 app.use('/admin.html', basicAuth({
     users: { 
-        [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'admin' 
+        [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'rafaelRAMOS' 
     },
     challenge: true, // Abre o popup do navegador
     unauthorizedResponse: (req) => {
@@ -430,3 +430,4 @@ io.on("connection", async (socket) => {
 server.listen(PORT, () => {
   console.log(`🔥 Servidor Seguro rodando na porta ${PORT}`);
 });
+
