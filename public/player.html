@@ -9,54 +9,119 @@
       margin: 0;
       background: black;
       overflow: hidden; /* Impede barras de rolagem */
+      font-family: Arial, sans-serif;
     }
     #player {
       width: 100%;
       height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
     }
     
-    /* ❗️ ESTILOS DA FAIXA ATUALIZADOS/ADICIONADOS ❗️ */
+    /* --- FAIXA PROMOCIONAL (RODAPÉ) --- */
     #promo-banner {
       position: fixed;
       bottom: 0;
       left: 0;
       width: 100%;
-      background-color: rgba(0, 0, 0, 0.7); 
-      color: #fff;
-      padding: 10px 0; /* Padding vertical, horizontal zerado para span ocupar tudo */
-      font-size: 1.5rem; 
-      font-family: Arial, sans-serif;
-      text-align: center; /* Centraliza se o texto for curto */
-      box-sizing: border-box;
+      background-color: rgba(0, 0, 0, 0.85); 
+      color: #ffd700; /* Ouro */
+      padding: 15px 0; 
+      font-size: 1.8rem; 
+      font-weight: bold;
+      text-transform: uppercase;
       z-index: 10; 
-      white-space: nowrap; /* Impede quebra de linha do span */
-      overflow: hidden; /* Esconde o span que sai da tela */
+      white-space: nowrap; 
+      overflow: hidden; 
+      border-top: 4px solid #e67e22;
     }
 
-    /* Span interno que conterá o texto e será animado */
     #promo-text-content {
-        display: inline-block; /* Necessário para animação de movimento */
-        padding-left: 100%; /* Inicia fora da tela à direita */
+        display: inline-block; 
+        padding-left: 100%; 
     }
 
-    /* Classe que ativa a animação */
     #promo-banner.scrolling #promo-text-content {
-        /* Animação: nome, duração, tipo, repetição */
-        animation: marquee 60s linear infinite; 
+        animation: marquee 40s linear infinite; 
     }
 
-    /* Definição da Animação Marquee */
     @keyframes marquee {
-      0%   { transform: translate(0, 0); } /* Começa à direita (fora da tela devido ao padding-left) */
-      100% { transform: translate(-200%, 0); } /* Termina à esquerda (fora da tela) */
-      /* O -200% move o texto inteiro + o espaço inicial */
+      0%   { transform: translate(0, 0); } 
+      100% { transform: translate(-200%, 0); } 
     }
-    /* 🔼🔼🔼 FIM DOS ESTILOS DA FAIXA 🔼🔼🔼 */
+
+    /* --- [NOVO] LISTA DE PRÓXIMAS (CANTO SUPERIOR DIREITO) --- */
+    #queue-overlay {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 300px;
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: 10px;
+      padding: 15px;
+      color: white;
+      z-index: 20; /* Fica acima do vídeo */
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      display: none; /* Começa escondido se não tiver fila */
+    }
+
+    #queue-overlay h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.2rem;
+      color: #e67e22; /* Laranja da marca */
+      border-bottom: 1px solid #555;
+      padding-bottom: 5px;
+      text-align: center;
+    }
+
+    #queue-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #queue-list li {
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+    }
+
+    #queue-list li .song-number {
+      font-weight: bold;
+      margin-right: 8px;
+      color: #aaa;
+    }
+
+    #queue-list li .song-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-grow: 1;
+    }
+
+    #queue-list li.is-customer {
+      color: #00ffcc; /* Destaque para cliente */
+    }
+    
+    #queue-list li.is-customer .song-title::after {
+      content: ' ★'; /* Estrela para indicar pedido pago */
+      color: #ffd700;
+    }
 
   </style>
 </head>
 <body>
   <div id="player"></div>
+
+  <div id="queue-overlay">
+      <h3>Próximas Músicas</h3>
+      <ul id="queue-list">
+          </ul>
+  </div>
 
   <div id="promo-banner">
       <span id="promo-text-content">Bem-vindo ao Contêiner Music Box!</span>
@@ -66,6 +131,4 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="js/player.js"></script>
 </body>
-
 </html>
-
