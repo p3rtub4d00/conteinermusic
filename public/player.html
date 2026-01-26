@@ -112,13 +112,13 @@
       color: #ffd700;
     }
 
-    /* --- [NOVO] QR CODE (CANTO SUPERIOR ESQUERDO) --- */
+    /* --- QR CODE (CANTO SUPERIOR ESQUERDO) --- */
     #qr-overlay {
       position: fixed;
       top: 20px;
-      left: 20px; /* Lado oposto da lista */
+      left: 20px; 
       width: auto;
-      background-color: rgba(0, 0, 0, 0.7); /* Mesmo estilo */
+      background-color: rgba(0, 0, 0, 0.7); 
       border-radius: 10px;
       padding: 15px;
       color: white;
@@ -152,6 +152,53 @@
         color: #ccc;
     }
 
+    /* --- 🆕 POPUP DE NOVO PEDIDO (CENTRO) --- */
+    #notification-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.8);
+        background: rgba(0, 0, 0, 0.9);
+        border: 4px solid #00ffcc;
+        border-radius: 20px;
+        padding: 30px 50px;
+        color: #fff;
+        text-align: center;
+        z-index: 100; /* Acima de tudo */
+        display: none; /* Escondido por padrão */
+        box-shadow: 0 0 40px rgba(0, 255, 204, 0.6);
+        opacity: 0;
+        transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    #notification-popup.show {
+        display: block;
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    #notification-popup h2 {
+        color: #00ffcc;
+        font-size: 2.5rem;
+        margin: 0 0 15px 0;
+        text-transform: uppercase;
+        text-shadow: 0 0 10px rgba(0, 255, 204, 0.8);
+    }
+
+    #notification-popup p {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #fff;
+        margin: 0;
+    }
+
+    #notification-popup span {
+        display: block;
+        font-size: 1.2rem;
+        color: #aaa;
+        margin-top: 10px;
+    }
+
   </style>
 </head>
 <body>
@@ -166,6 +213,12 @@
   <div id="queue-overlay">
       <h3>Próximas Músicas</h3>
       <ul id="queue-list"></ul>
+  </div>
+
+  <div id="notification-popup">
+      <h2>✨ Novo Pedido Aceito! ✨</h2>
+      <p id="notif-song-title">Nome da Música Aqui</p>
+      <span>Obrigado pela preferência! 🍻</span>
   </div>
 
   <div id="promo-banner">
