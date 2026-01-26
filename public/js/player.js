@@ -13,16 +13,14 @@ const promoTextContentElement = document.getElementById('promo-text-content');
 const queueOverlay = document.getElementById('queue-overlay');
 const queueList = document.getElementById('queue-list');
 const qrImg = document.getElementById('qr-img');
-
-// [NOVO] Elementos do Popup
 const notificationPopup = document.getElementById('notification-popup');
 const notifSongTitle = document.getElementById('notif-song-title');
+const reactionContainer = document.getElementById('reaction-container'); // [NOVO]
 
 // TTS REATIVADO
 const synth = window.speechSynthesis;
 
-// 🤖 [NOVO] CONFIGURAÇÃO DO BOT 🤖
-// Lista de músicas falsas para gerar engajamento
+// 🤖 CONFIGURAÇÃO DO BOT 🤖
 const fakeSongs = [
     "Zé Neto & Cristiano - Oi Balde",
     "Gusttavo Lima - Termina Comigo Antes",
@@ -39,55 +37,80 @@ const fakeSongs = [
 ];
 
 let botTimer = null;
-const BOT_INTERVAL = 10 * 60 * 1000; // 10 Minutos (em milissegundos)
+const BOT_INTERVAL = 10 * 60 * 1000; // 10 Minutos
 
-// Função para iniciar/resetar o timer do Bot
 function resetBotTimer() {
     if (botTimer) clearTimeout(botTimer);
-    console.log(`[Bot] Timer resetado. Próximo pedido falso em ${BOT_INTERVAL/1000/60} minutos.`);
+    console.log(`[Bot] Timer resetado.`);
     botTimer = setTimeout(triggerFakeOrder, BOT_INTERVAL);
 }
 
-// Função que dispara o pedido falso
 function triggerFakeOrder() {
-    // Escolhe música aleatória
     const randomSong = fakeSongs[Math.floor(Math.random() * fakeSongs.length)];
     console.log(`[Bot] Disparando pedido falso: ${randomSong}`);
     showNotification(randomSong);
-    // Reinicia o ciclo
     resetBotTimer();
 }
 
-// Função para mostrar o Popup na tela (Real ou Fake)
 function showNotification(title) {
     if (!notificationPopup || !notifSongTitle) return;
-
     notifSongTitle.textContent = title;
     notificationPopup.classList.add('show');
-
-    // Toca um som de notificação (opcional, simples beep do navegador se permitido)
-    // const audio = new Audio('/sounds/notification.mp3'); audio.play().catch(e=>{}); 
-
-    // Esconde depois de 5 segundos
     setTimeout(() => {
         notificationPopup.classList.remove('show');
     }, 5000);
 }
 
+// [NOVO] Função para criar Chuva de Emojis
+function createReaction(emoji) {
+    if (!reactionContainer) return;
 
-// [NOVO] Gera o QR Code automaticamente ao carregar a página
+    // Cria múltiplos elementos para parecer "chuva"
+    const count = 5; // Quantidade de emojis por clique
+    
+    for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        el.classList.add('floating-emoji');
+        el.textContent = emoji;
+
+        // Posição horizontal aleatória (0 a 100%)
+        const randomLeft = Math.random() * 100;
+        el.style.left = `${randomLeft}%`;
+
+        // Tamanho levemente variável
+        const randomSize = 2 + Math.random() * 2; // entre 2rem e 4rem
+        el.style.fontSize = `${randomSize}rem`;
+
+        // Atraso aleatório para não subirem todos juntos
+        const randomDelay = Math.random() * 0.5;
+        el.style.animationDelay = `${randomDelay}s`;
+        
+        // Duração aleatória para velocidades diferentes
+        const randomDuration = 3 + Math.random() * 2;
+        el.style.animationDuration = `${randomDuration}s`;
+
+        reactionContainer.appendChild(el);
+
+        // Remove do DOM quando a animação acabar (4s + delay)
+        setTimeout(() => {
+            el.remove();
+        }, (randomDuration + randomDelay) * 1000);
+    }
+}
+
+
+// QR Code Generator
 window.addEventListener('load', () => {
     if (qrImg) {
         const currentUrl = window.location.origin;
         qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUrl)}`;
         console.log(`[Player.js] QR Code gerado para: ${currentUrl}`);
     }
-    // Inicia o timer do bot assim que a página carrega
     resetBotTimer();
 });
 
 
-// 1. YouTube API Ready
+// YouTube API
 function onYouTubeIframeAPIReady() {
   player = new YT.Player('player', {
     width: '100%',
@@ -101,7 +124,6 @@ function onYouTubeIframeAPIReady() {
   });
 }
 
-// 2. Player Ready
 function onPlayerReady(event) {
   isPlayerReady = true;
   player.mute();
@@ -112,7 +134,6 @@ function onPlayerReady(event) {
   }
 }
 
-// 3. State Change
 function onPlayerStateChange(event) {
   if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
     if (currentVideoTimer) {
@@ -137,7 +158,6 @@ function onPlayerStateChange(event) {
   }
 }
 
-// Erro Player
 function onPlayerError(event) {
     if (synth && synth.speaking) synth.cancel();
     if (currentVideoTimer) {
@@ -147,17 +167,19 @@ function onPlayerError(event) {
     socket.emit('player:videoEnded');
 }
 
-// 4. Socket Events
+// Socket Events
 socket.on('connect', () => console.log('[Player.js] Conectado ao servidor'));
 
-// [NOVO] Ouve notificação de pedido REAL do servidor
 socket.on('player:newOrderNotification', (data) => {
-    console.log('[Player.js] Pedido REAL recebido:', data.title);
     showNotification(data.title);
-    resetBotTimer(); // Zera o timer do bot, pois acabou de ter uma interação real
+    resetBotTimer();
 });
 
-// Atualiza Fila
+// [NOVO] Recebe reação do servidor e desenha na tela
+socket.on('player:showReaction', (emoji) => {
+    createReaction(emoji);
+});
+
 socket.on('updatePlayerState', (state) => {
     if (state && state.queue) {
         updateQueueDisplay(state.queue);
@@ -178,7 +200,6 @@ function updateQueueDisplay(queue) {
     }).join('');
 }
 
-// Tocar Vídeo
 socket.on('player:playVideo', ({ videoId, title, message }) => {
   const videoInfo = { videoId, title, message };
   if (isPlayerReady) {
@@ -188,7 +209,6 @@ socket.on('player:playVideo', ({ videoId, title, message }) => {
   }
 });
 
-// Promo Text
 socket.on('player:updatePromoText', (text) => {
   if (promoBannerElement && promoTextContentElement) {
     promoTextContentElement.textContent = text;
@@ -200,7 +220,6 @@ socket.on('player:updatePromoText', (text) => {
   }
 });
 
-// Controls
 socket.on('player:setInitialState', (data) => {
   if (!isPlayerReady) return;
   player.setVolume(data.volume);
@@ -218,7 +237,6 @@ socket.on('player:setVolume', (data) => {
   if (data.isMuted) player.mute(); else player.unMute();
 });
 
-// Play Video
 function playVideo({ videoId, title, message }) {
   if (!isPlayerReady) return;
   if (synth && synth.speaking) synth.cancel();
@@ -254,7 +272,6 @@ function playVideo({ videoId, title, message }) {
   }
 }
 
-// Ping
 setInterval(() => {
     if (socket && socket.connected) socket.emit('player:ping');
 }, 5 * 60 * 1000);
