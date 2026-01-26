@@ -4,7 +4,6 @@ let isPlayerReady = false;
 
 let currentVideoTimer = null;
 const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos em milissegundos
-// [MUDANÇA] Linha duplicada abaixo foi removida (era 60 * 60 * 1000)
 
 let pendingVideo = null;
 
@@ -26,7 +25,7 @@ function onYouTubeIframeAPIReady() {
     events: {
       'onReady': onPlayerReady,
       'onStateChange': onPlayerStateChange,
-      'onError': onPlayerError // [MUDANÇA] Adicionado listener de erro
+      'onError': onPlayerError
     }
   });
 }
@@ -87,7 +86,7 @@ function onPlayerStateChange(event) {
   }
 }
 
-// [MUDANÇA] Nova função para lidar com erros do player
+// Função para lidar com erros do player
 function onPlayerError(event) {
     console.error('[Player.js] Erro no player do YouTube detectado:', event.data);
     console.error('[Player.js] Isso pode ser um vídeo privado, deletado ou bloqueado.');
@@ -103,7 +102,6 @@ function onPlayerError(event) {
     console.log('[Player.js] Avisando o servidor para pular o vídeo com erro.');
     socket.emit('player:videoEnded');
 }
-// [FIM DA MUDANÇA]
 
 // 4. Ouve por comandos do servidor
 socket.on('connect', () => console.log('[Player.js] Conectado ao servidor'));
@@ -206,7 +204,7 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
     console.log(`[Player.js] Preparando para falar a mensagem: "${message}"`);
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'pt-BR';
-    utterance.rate = 1.0; // Velocidade ajustada
+    utterance.rate = 1.0; 
     utterance.pitch = 1.0;
 
     let speechTimeout = null;
@@ -231,11 +229,12 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
         synth.cancel();
         setTimeout(() => {
             synth.speak(utterance);
+            // MUDANÇA AQUI: Timeout aumentado para 20 segundos
             speechTimeout = setTimeout(() => {
-                console.warn('[Player.js] Timeout da fala atingido. Forçando o play do vídeo.');
+                console.warn('[Player.js] Timeout da fala atingido (20s). Forçando o play do vídeo.');
                 synth.cancel();
                 loadAndPlayVideo();
-            }, 8000); // Timeout de 8 segundos
+            }, 20000); 
         }, 100);
 
     } catch (e) {
@@ -252,12 +251,11 @@ function playVideo({ videoId, title, message }) { // Recebe 'message'
   }
 
 }
-// 🔽🔽🔽 [NOVO: MANTÉM O SERVIDOR ACORDADO] 🔽🔽🔽
-// Envia um sinal a cada 5 minutos para o Render não dormir
+
+// Envia um sinal a cada 5 minutos para o servidor não dormir
 setInterval(() => {
     if (socket && socket.connected) {
         console.log('[Player.js] Enviando ping para o servidor...');
         socket.emit('player:ping');
     }
 }, 5 * 60 * 1000);
-
