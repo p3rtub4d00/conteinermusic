@@ -52,7 +52,7 @@
       100% { transform: translate(-200%, 0); } 
     }
 
-    /* --- [NOVO] LISTA DE PRÓXIMAS (CANTO SUPERIOR DIREITO) --- */
+    /* --- LISTA DE PRÓXIMAS (CANTO SUPERIOR DIREITO) --- */
     #queue-overlay {
       position: fixed;
       top: 20px;
@@ -62,10 +62,10 @@
       border-radius: 10px;
       padding: 15px;
       color: white;
-      z-index: 20; /* Fica acima do vídeo */
+      z-index: 20; 
       border: 1px solid rgba(255, 255, 255, 0.2);
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      display: none; /* Começa escondido se não tiver fila */
+      display: none; 
     }
 
     #queue-overlay h3 {
@@ -108,8 +108,48 @@
     }
     
     #queue-list li.is-customer .song-title::after {
-      content: ' ★'; /* Estrela para indicar pedido pago */
+      content: ' ★'; 
       color: #ffd700;
+    }
+
+    /* --- [NOVO] QR CODE (CANTO SUPERIOR ESQUERDO) --- */
+    #qr-overlay {
+      position: fixed;
+      top: 20px;
+      left: 20px; /* Lado oposto da lista */
+      width: auto;
+      background-color: rgba(0, 0, 0, 0.7); /* Mesmo estilo */
+      border-radius: 10px;
+      padding: 15px;
+      color: white;
+      z-index: 20;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #qr-overlay p {
+        margin: 0 0 10px 0;
+        color: #e67e22;
+        font-weight: bold;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+    }
+
+    #qr-img {
+        width: 130px;
+        height: 130px;
+        border: 2px solid white;
+        border-radius: 5px;
+    }
+    
+    #qr-url {
+        margin-top: 5px;
+        font-size: 0.8rem;
+        color: #ccc;
     }
 
   </style>
@@ -117,10 +157,15 @@
 <body>
   <div id="player"></div>
 
+  <div id="qr-overlay">
+      <p>Peça sua Música!</p>
+      <img id="qr-img" src="" alt="QR Code">
+      <div id="qr-url">Aponte a câmera 📷</div>
+  </div>
+
   <div id="queue-overlay">
       <h3>Próximas Músicas</h3>
-      <ul id="queue-list">
-          </ul>
+      <ul id="queue-list"></ul>
   </div>
 
   <div id="promo-banner">
