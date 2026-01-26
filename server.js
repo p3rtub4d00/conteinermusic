@@ -60,6 +60,17 @@ const SearchCacheSchema = new mongoose.Schema({
 });
 const SearchCacheModel = mongoose.model('SearchCache', SearchCacheSchema);
 
+// 5. [NOVO] Fila de Reprodução (Persistente)
+const QueueSchema = new mongoose.Schema({
+  videoId: String,
+  title: String,
+  isCustomer: { type: Boolean, default: false },
+  message: String,
+  priority: { type: Number, default: 1 }, // 1 = Cliente/Admin, 0 = Inatividade
+  createdAt: { type: Date, default: Date.now }
+});
+const QueueModel = mongoose.model('Queue', QueueSchema);
+
 
 // --- Inicialização do Servidor ---
 const app = express();
@@ -93,7 +104,7 @@ const mpClient = new MercadoPagoConfig({
 // --- Variáveis de Estado em Memória ---
 const INACTIVITY_TIMEOUT = 5000;
 let inactivityTimer = null;
-let mainQueue = []; 
+// let mainQueue = []; // REMOVIDO: Agora usamos QueueModel
 let nowPlayingInfo = null;
 let isCustomerPlaying = false;
 
@@ -121,10 +132,21 @@ async function fetchVideoIdByName(name) {
 }
 
 // Controle do Player
-function broadcastPlayerState() {
+async function broadcastPlayerState() {
+  // Busca fila do banco, ordenada por prioridade (maior primeiro) e depois chegada
+  const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 });
+  
+  // Mapeia para o formato que o front espera
+  const formattedQueue = queue.map(item => ({
+      id: item.videoId,
+      title: item.title,
+      isCustomer: item.isCustomer,
+      message: item.message
+  }));
+
   const state = {
     nowPlaying: nowPlayingInfo,
-    queue: mainQueue
+    queue: formattedQueue
   };
   io.emit('updatePlayerState', state);
 }
@@ -133,8 +155,16 @@ async function playNextInQueue() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
 
-  if (mainQueue.length > 0) {
-    nowPlayingInfo = mainQueue.shift();
+  // Busca o próximo item do banco (tira da fila)
+  const nextVideo = await QueueModel.findOneAndDelete({}, { sort: { priority: -1, createdAt: 1 } });
+
+  if (nextVideo) {
+    nowPlayingInfo = {
+        id: nextVideo.videoId,
+        title: nextVideo.title,
+        message: nextVideo.message,
+        isCustomer: nextVideo.isCustomer
+    };
     isCustomerPlaying = nowPlayingInfo.isCustomer;
     console.log(`[Server] Tocando: ${nowPlayingInfo.title}`);
     
@@ -149,28 +179,38 @@ async function playNextInQueue() {
     isCustomerPlaying = false;
     startInactivityTimer();
   }
-  broadcastPlayerState();
+  broadcastPlayerState(); // Atualiza a tela de todos
 }
 
-function startInactivityTimer() {
+async function startInactivityTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
-  if (nowPlayingInfo || mainQueue.length > 0) return;
+
+  // Verifica se realmente está vazio (BD e memória)
+  const queueCount = await QueueModel.countDocuments();
+  if (nowPlayingInfo || queueCount > 0) return;
 
   console.log(`[Server] Timer de inatividade (${INACTIVITY_TIMEOUT/1000}s) iniciado...`);
 
   inactivityTimer = setTimeout(async () => {
-    if (nowPlayingInfo || mainQueue.length > 0) return;
+    if (nowPlayingInfo) return;
+    const countCheck = await QueueModel.countDocuments();
+    if (countCheck > 0) return; // Chegou algo nesse meio tempo
 
     const inactivitySongs = await InactivityModel.find({});
     if (inactivitySongs.length > 0) {
       console.log('[Server] Inatividade detectada. Carregando lista do banco.');
-      mainQueue = inactivitySongs.map(song => ({
-        id: song.videoId,
+      
+      // Insere as músicas de inatividade no banco com Prioridade 0
+      const itemsToInsert = inactivitySongs.map(song => ({
+        videoId: song.videoId,
         title: song.title || '(Música da Casa)', 
         isCustomer: false,
-        message: null
+        message: null,
+        priority: 0 // Prioridade Baixa
       }));
+
+      await QueueModel.insertMany(itemsToInsert);
       playNextInQueue();
     } else {
       console.log('[Server] Inatividade, mas banco de inatividade está vazio.');
@@ -297,15 +337,23 @@ app.post("/webhook", async (req, res) => {
         if (inactivityTimer) clearTimeout(inactivityTimer);
         inactivityTimer = null;
 
+        // Prepara os vídeos para inserir no Banco
         const customerVideos = dbPayment.videos.map(v => ({
-          id: v.id, title: v.title, isCustomer: true, message: dbPayment.message
+          videoId: v.id, 
+          title: v.title, 
+          isCustomer: true, 
+          message: dbPayment.message,
+          priority: 1 // Prioridade Alta (Cliente)
         }));
 
+        await QueueModel.insertMany(customerVideos);
+
+        // Lógica de interrupção / tocar agora
         if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
-           mainQueue = [...customerVideos, ...mainQueue];
+           // Se está tocando música da casa, interrompe e toca a do cliente
            playNextInQueue();
         } else {
-           mainQueue.push(...customerVideos);
+           // Se já está tocando cliente ou nada, apenas avisa que fila mudou
            if (!nowPlayingInfo) playNextInQueue();
            else broadcastPlayerState();
         }
@@ -329,7 +377,11 @@ io.on("connection", async (socket) => {
   console.log("[Socket] Conectado:", socket.id);
   const config = await getConfig();
   
-  socket.emit('updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
+  // Manda estado atual (agora buscando do banco dentro da função broadcast)
+  const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 });
+  const formattedQueue = queue.map(item => ({ id: item.videoId, title: item.title, isCustomer: item.isCustomer, message: item.message }));
+  
+  socket.emit('updatePlayerState', { nowPlaying: nowPlayingInfo, queue: formattedQueue });
   socket.emit('player:updatePromoText', config.currentPromoText);
   
   socket.on('player:ready', async () => {
@@ -339,16 +391,20 @@ io.on("connection", async (socket) => {
       isMuted: freshConfig.isMuted 
     });
     socket.emit('player:updatePromoText', freshConfig.currentPromoText);
-    if (!nowPlayingInfo) startInactivityTimer();
+    
+    // Recuperação após restart: Se não tá tocando nada, checa o banco
+    if (!nowPlayingInfo) {
+        const count = await QueueModel.countDocuments();
+        if (count > 0) playNextInQueue();
+        else startInactivityTimer();
+    }
   });
 
   socket.on('player:videoEnded', () => playNextInQueue());
 
-  // 🔽🔽🔽 [NOVO: OUVINTE DO PING] 🔽🔽🔽
   socket.on('player:ping', () => {
     console.log(`[Ping] Keep-alive recebido do player: ${socket.id}`);
   });
-  // 🔼🔼🔼
 
   // Admin Events
   socket.on('admin:getList', async () => {
@@ -358,7 +414,12 @@ io.on("connection", async (socket) => {
 
     socket.emit('admin:loadInactivityList', names);
     socket.emit('admin:updateRevenue', freshConfig.dailyRevenue);
-    socket.emit('admin:updatePlayerState', { nowPlaying: nowPlayingInfo, queue: mainQueue });
+    
+    // Atualiza estado do player pro admin
+    const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 });
+    const formattedQueue = queue.map(item => ({ id: item.videoId, title: item.title, isCustomer: item.isCustomer, message: item.message }));
+    socket.emit('admin:updatePlayerState', { nowPlaying: nowPlayingInfo, queue: formattedQueue });
+
     socket.emit('admin:updateVolume', { volume: freshConfig.currentVolume, isMuted: freshConfig.isMuted });
     socket.emit('admin:loadPromoText', freshConfig.currentPromoText);
   });
@@ -393,9 +454,17 @@ io.on("connection", async (socket) => {
       } catch(e) { socket.emit('admin:searchResults', []); }
   });
 
-  socket.on('admin:addVideo', ({ videoId, videoTitle }) => {
+  socket.on('admin:addVideo', async ({ videoId, videoTitle }) => {
     if (videoId) {
-      mainQueue.push({ id: videoId, title: videoTitle, isCustomer: false, message: null });
+      // Salva no banco com prioridade 1 (Admin/Cliente)
+      await QueueModel.create({
+          videoId: videoId,
+          title: videoTitle,
+          isCustomer: false,
+          message: null,
+          priority: 1
+      });
+
       if (!nowPlayingInfo) playNextInQueue();
       else broadcastPlayerState();
     }
