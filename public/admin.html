@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a1a">
   <title>Admin - Contêiner Music Box</title>
+  
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/images/logo.png">
+  
   <link rel="stylesheet" href="/css/admin.css">
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
@@ -13,6 +18,7 @@
     <header>
       <img src="/images/logo.png" alt="Logo" id="logo">
       <h1>Painel Admin</h1>
+      <button id="installAppBtn" style="display: none; margin: 10px auto; background-color: #28a745;">📲 Instalar App</button>
     </header>
 
     <main>
@@ -92,5 +98,15 @@
   <script src="/socket.io/socket.io.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script src="js/admin.js"></script>
+  
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW registrado!', reg))
+          .catch(err => console.log('SW falhou:', err));
+      });
+    }
+  </script>
 </body>
 </html>
