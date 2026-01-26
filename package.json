@@ -1,7 +1,7 @@
 {
   "name": "meu-site-youtube",
   "version": "1.0.0",
-  "description": "Sistema de seleção de vídeos do YouTube com pagamento via PIX, MongoDB e Segurança",
+  "description": "Sistema de jukebox com pagamento PIX",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -10,8 +10,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "author": "Conteiner Beer",
-  "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
