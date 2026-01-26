@@ -232,3 +232,36 @@ socket.on('updatePlayerState', (state) => {
 socket.on('admin:loadPromoText', (text) => {
   if (promoTextInput) promoTextInput.value = text;
 });
+
+// --------------------------------------------------------------------------
+// 🔽 Lógica de Instalação do PWA (Adicionado para funcionar como App) 🔽
+// --------------------------------------------------------------------------
+let deferredPrompt;
+const installBtn = document.getElementById('installAppBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Previne que o Chrome mostre o prompt nativo automaticamente (opcional)
+  e.preventDefault();
+  // Guarda o evento para usar depois
+  deferredPrompt = e;
+  // Mostra o botão de instalar
+  if (installBtn) installBtn.style.display = 'block';
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      deferredPrompt = null;
+      // Esconde o botão após instalar
+      installBtn.style.display = 'none';
+    }
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  console.log('PWA was installed');
+  if (installBtn) installBtn.style.display = 'none';
+});
