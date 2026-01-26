@@ -3,35 +3,92 @@ let player;
 let isPlayerReady = false;
 
 let currentVideoTimer = null;
-const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos em milissegundos
+const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos
 
 let pendingVideo = null;
 
 // Elementos da Interface
 const promoBannerElement = document.getElementById('promo-banner');
-const promoTextContentElement = document.getElementById('promo-text-content'); // Span interno
+const promoTextContentElement = document.getElementById('promo-text-content');
 const queueOverlay = document.getElementById('queue-overlay');
 const queueList = document.getElementById('queue-list');
 const qrImg = document.getElementById('qr-img');
 
-// TTS REATIVADO: Referência à API de Fala
+// [NOVO] Elementos do Popup
+const notificationPopup = document.getElementById('notification-popup');
+const notifSongTitle = document.getElementById('notif-song-title');
+
+// TTS REATIVADO
 const synth = window.speechSynthesis;
+
+// 🤖 [NOVO] CONFIGURAÇÃO DO BOT 🤖
+// Lista de músicas falsas para gerar engajamento
+const fakeSongs = [
+    "Zé Neto & Cristiano - Oi Balde",
+    "Gusttavo Lima - Termina Comigo Antes",
+    "Marília Mendonça - Leão",
+    "Henrique & Juliano - Traumatizei",
+    "Jorge & Mateus - 5 Regras",
+    "Ana Castela - Nosso Quadro",
+    "Luan Santana - Meio Termo",
+    "Simone Mendes - Erro Gostoso",
+    "Israel & Rodolffo - Bombonzinho",
+    "Matheus & Kauan - Pactos",
+    "Zé Neto & Cristiano - Filha",
+    "Gusttavo Lima - Bloqueado"
+];
+
+let botTimer = null;
+const BOT_INTERVAL = 10 * 60 * 1000; // 10 Minutos (em milissegundos)
+
+// Função para iniciar/resetar o timer do Bot
+function resetBotTimer() {
+    if (botTimer) clearTimeout(botTimer);
+    console.log(`[Bot] Timer resetado. Próximo pedido falso em ${BOT_INTERVAL/1000/60} minutos.`);
+    botTimer = setTimeout(triggerFakeOrder, BOT_INTERVAL);
+}
+
+// Função que dispara o pedido falso
+function triggerFakeOrder() {
+    // Escolhe música aleatória
+    const randomSong = fakeSongs[Math.floor(Math.random() * fakeSongs.length)];
+    console.log(`[Bot] Disparando pedido falso: ${randomSong}`);
+    showNotification(randomSong);
+    // Reinicia o ciclo
+    resetBotTimer();
+}
+
+// Função para mostrar o Popup na tela (Real ou Fake)
+function showNotification(title) {
+    if (!notificationPopup || !notifSongTitle) return;
+
+    notifSongTitle.textContent = title;
+    notificationPopup.classList.add('show');
+
+    // Toca um som de notificação (opcional, simples beep do navegador se permitido)
+    // const audio = new Audio('/sounds/notification.mp3'); audio.play().catch(e=>{}); 
+
+    // Esconde depois de 5 segundos
+    setTimeout(() => {
+        notificationPopup.classList.remove('show');
+    }, 5000);
+}
+
 
 // [NOVO] Gera o QR Code automaticamente ao carregar a página
 window.addEventListener('load', () => {
     if (qrImg) {
-        // Pega a URL atual do site (ex: https://seu-site.onrender.com)
         const currentUrl = window.location.origin;
-        // Usa API pública para gerar a imagem
         qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUrl)}`;
         console.log(`[Player.js] QR Code gerado para: ${currentUrl}`);
     }
+    // Inicia o timer do bot assim que a página carrega
+    resetBotTimer();
 });
 
 
-// 1. A API do YouTube chama esta função quando está pronta.
+// 1. YouTube API Ready
 function onYouTubeIframeAPIReady() {
-  console.log("[Player.js] API do Iframe do YouTube está pronta.");
   player = new YT.Player('player', {
     width: '100%',
     height: '100%',
@@ -44,53 +101,33 @@ function onYouTubeIframeAPIReady() {
   });
 }
 
-// 2. Evento quando o *player* está pronto.
+// 2. Player Ready
 function onPlayerReady(event) {
-  console.log('[Player.js] Evento onPlayerReady disparado!');
   isPlayerReady = true;
-  player.mute(); // Muta inicialmente
-
-  console.log('[Player.js] Enviando "player:ready" para o servidor.');
+  player.mute();
   socket.emit('player:ready');
-
-  // Se houver um vídeo pendente (que chegou antes do player ficar pronto)
   if (pendingVideo) {
-    console.log('[Player.js] Tocando vídeo pendente que chegou antes do player.');
     playVideo(pendingVideo);
     pendingVideo = null;
-  } else {
-    console.log('[Player.js] Nenhum vídeo pendente encontrado.');
   }
 }
 
-// 3. Evento de mudança de estado (lógica do timer)
+// 3. State Change
 function onPlayerStateChange(event) {
-  console.log('[Player.js] Estado do player mudou:', event.data, YT.PlayerState);
-
-  // Limpa o timer se o vídeo for pausado ou terminado
   if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
     if (currentVideoTimer) {
-      console.log('[Player.js] Vídeo pausado ou terminado, limpando timer.');
       clearTimeout(currentVideoTimer);
       currentVideoTimer = null;
     }
   }
-
-  // Se o vídeo está TOCANDO (estado 1)
   if (event.data === YT.PlayerState.PLAYING) {
-    // Só inicia um novo timer se ele já não estiver rodando
     if (!currentVideoTimer) {
-      console.log(`[Player.js] Iniciando timer de ${MAX_PLAYBACK_TIME / 60000} minutos para o vídeo.`);
       currentVideoTimer = setTimeout(() => {
-        console.log(`[Player.js] Tempo limite de ${MAX_PLAYBACK_TIME / 60000} minutos atingido! Pulando...`);
-        currentVideoTimer = null;
         socket.emit('player:videoEnded');
       }, MAX_PLAYBACK_TIME);
     }
   }
-  // Se o vídeo TERMINOU (estado 0)
   else if (event.data === YT.PlayerState.ENDED) {
-      console.log('[Player.js] Vídeo terminou, avisando o servidor.');
       if (synth && synth.speaking) synth.cancel();
       if (currentVideoTimer) {
           clearTimeout(currentVideoTimer);
@@ -100,28 +137,27 @@ function onPlayerStateChange(event) {
   }
 }
 
-// Função para lidar com erros do player
+// Erro Player
 function onPlayerError(event) {
-    console.error('[Player.js] Erro no player do YouTube detectado:', event.data);
-    console.error('[Player.js] Isso pode ser um vídeo privado, deletado ou bloqueado.');
-    
-    // Cancela qualquer fala ou timer
     if (synth && synth.speaking) synth.cancel();
     if (currentVideoTimer) {
         clearTimeout(currentVideoTimer);
         currentVideoTimer = null;
     }
-    
-    // Avisa o servidor para pular este vídeo, como se ele tivesse terminado
-    console.log('[Player.js] Avisando o servidor para pular o vídeo com erro.');
     socket.emit('player:videoEnded');
 }
 
-
-// 4. Ouve por comandos do servidor
+// 4. Socket Events
 socket.on('connect', () => console.log('[Player.js] Conectado ao servidor'));
 
-// [LISTA DE PRÓXIMAS] Recebe a fila atualizada e mostra na tela
+// [NOVO] Ouve notificação de pedido REAL do servidor
+socket.on('player:newOrderNotification', (data) => {
+    console.log('[Player.js] Pedido REAL recebido:', data.title);
+    showNotification(data.title);
+    resetBotTimer(); // Zera o timer do bot, pois acabou de ter uma interação real
+});
+
+// Atualiza Fila
 socket.on('updatePlayerState', (state) => {
     if (state && state.queue) {
         updateQueueDisplay(state.queue);
@@ -130,180 +166,95 @@ socket.on('updatePlayerState', (state) => {
 
 function updateQueueDisplay(queue) {
     if (!queueList || !queueOverlay) return;
-
-    // Se fila vazia, esconde
     if (queue.length === 0) {
         queueOverlay.style.display = 'none';
         return;
     }
-
-    // Mostra a caixa
     queueOverlay.style.display = 'block';
-    
-    // Pega apenas as próximas 5 músicas para não poluir a tela
     const nextSongs = queue.slice(0, 5);
-
     queueList.innerHTML = nextSongs.map((video, index) => {
         const cssClass = video.isCustomer ? 'is-customer' : '';
-        return `
-            <li class="${cssClass}">
-                <span class="song-number">${index + 1}.</span>
-                <span class="song-title">${video.title}</span>
-            </li>
-        `;
+        return `<li class="${cssClass}"><span class="song-number">${index + 1}.</span><span class="song-title">${video.title}</span></li>`;
     }).join('');
 }
 
-// Evento único para tocar um vídeo (agora com 'message')
+// Tocar Vídeo
 socket.on('player:playVideo', ({ videoId, title, message }) => {
-  console.log('[Player.js] Recebido comando player:playVideo', { videoId, title, message });
-  const videoInfo = { videoId, title, message }; // Guarda a mensagem
-
+  const videoInfo = { videoId, title, message };
   if (isPlayerReady) {
     playVideo(videoInfo);
   } else {
-    console.log('[Player.js] Comando de tocar recebido, mas player não está pronto. Armazenando.');
     pendingVideo = videoInfo;
   }
 });
 
-// Atualiza o texto da faixa de promoção e aplica animação se necessário
+// Promo Text
 socket.on('player:updatePromoText', (text) => {
   if (promoBannerElement && promoTextContentElement) {
     promoTextContentElement.textContent = text;
-    promoBannerElement.offsetHeight; // Força recalcular
+    promoBannerElement.classList.remove('scrolling');
+    void promoBannerElement.offsetWidth; 
     if (promoTextContentElement.scrollWidth > promoBannerElement.clientWidth) {
-      if (!promoBannerElement.classList.contains('scrolling')) {
-           console.log("[Player.js] Texto da promoção é longo. Ativando scroll.");
-           promoBannerElement.classList.add('scrolling');
-      }
-    } else {
-       if (promoBannerElement.classList.contains('scrolling')) {
-           console.log("[Player.js] Texto da promoção cabe. Desativando scroll.");
-           promoBannerElement.classList.remove('scrolling');
-       }
+         promoBannerElement.classList.add('scrolling');
     }
   }
 });
 
-// --- Comandos do Admin ---
+// Controls
 socket.on('player:setInitialState', (data) => {
   if (!isPlayerReady) return;
-  console.log('[Player.js] Recebendo estado inicial:', data);
   player.setVolume(data.volume);
-  if (data.isMuted) {
-    player.mute();
-  } else {
-    player.unMute();
-  }
+  if (data.isMuted) player.mute(); else player.unMute();
 });
-
 socket.on('player:pause', () => {
   if (!isPlayerReady) return;
   const state = player.getPlayerState();
-   console.log('[Player.js] Recebido comando player:pause. Estado atual:', state);
-  if (state === YT.PlayerState.PLAYING) {
-    player.pauseVideo();
-  } else if (state === YT.PlayerState.PAUSED) {
-    player.playVideo();
-  }
+  if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+  else if (state === YT.PlayerState.PAUSED) player.playVideo();
 });
-
 socket.on('player:setVolume', (data) => {
   if (!isPlayerReady) return;
-  console.log('[Player.js] Recebido comando player:setVolume:', data);
   player.setVolume(data.volume);
-  if (data.isMuted) {
-    player.mute();
-  } else {
-    player.unMute();
-  }
+  if (data.isMuted) player.mute(); else player.unMute();
 });
 
-// 5. Função para tocar vídeo (com TTS)
-function playVideo({ videoId, title, message }) { // Recebe 'message'
-  if (!isPlayerReady) {
-    console.warn('[Player.js] Função playVideo chamada, mas o player não está pronto.');
-    return;
-  }
-
-  console.log('[Player.js] Iniciando processo playVideo para:', title);
-
+// Play Video
+function playVideo({ videoId, title, message }) {
+  if (!isPlayerReady) return;
   if (synth && synth.speaking) synth.cancel();
   if (currentVideoTimer) {
     clearTimeout(currentVideoTimer);
     currentVideoTimer = null;
   }
-  const currentState = player.getPlayerState();
-  if (currentState === YT.PlayerState.PLAYING || currentState === YT.PlayerState.BUFFERING ) {
-      console.log('[Player.js] Parando vídeo atual antes de carregar o próximo.');
-      player.stopVideo();
-  }
+  try { player.stopVideo(); } catch(e){}
 
-  // Função interna para carregar o vídeo
-  const loadAndPlayVideo = () => {
-    console.log(`[Player.js] Carregando vídeo: ${title} (${videoId})`);
-    pendingVideo = null;
-    player.loadVideoById(videoId);
-  };
+  const loadAndPlayVideo = () => player.loadVideoById(videoId);
 
-  // Verifica se há mensagem para falar E se a API de fala está disponível
   if (message && message.trim().length > 0 && synth) {
-    console.log(`[Player.js] Preparando para falar a mensagem: "${message}"`);
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'pt-BR';
     utterance.rate = 1.0; 
-    utterance.pitch = 1.0;
-
     let speechTimeout = null;
 
-    // QUANDO A FALA TERMINAR
-    utterance.onend = () => {
-      console.log('[Player.js] Mensagem falada. Tocando o vídeo...');
-      if (speechTimeout) clearTimeout(speechTimeout);
-      loadAndPlayVideo();
-    };
+    utterance.onend = () => { if (speechTimeout) clearTimeout(speechTimeout); loadAndPlayVideo(); };
+    utterance.onerror = () => { if (speechTimeout) clearTimeout(speechTimeout); loadAndPlayVideo(); };
 
-    // QUANDO OCORRER ERRO na fala
-    utterance.onerror = (event) => {
-      console.error('[Player.js] Erro na síntese de fala:', event.error);
-      if (speechTimeout) clearTimeout(speechTimeout);
-      console.log('[Player.js] Erro na fala. Tocando o vídeo mesmo assim...');
-      loadAndPlayVideo();
-    };
-
-    // Inicia a fala
     try {
         synth.cancel();
         setTimeout(() => {
             synth.speak(utterance);
-            // Timeout de 20 segundos
             speechTimeout = setTimeout(() => {
-                console.warn('[Player.js] Timeout da fala atingido. Forçando o play do vídeo.');
                 synth.cancel();
                 loadAndPlayVideo();
             }, 20000); 
         }, 100);
-
-    } catch (e) {
-        console.error('[Player.js] Erro ao chamar synth.speak:', e);
-        if (speechTimeout) clearTimeout(speechTimeout);
-        loadAndPlayVideo();
-    }
-
+    } catch (e) { loadAndPlayVideo(); }
   } else {
-    // Sem mensagem ou API de fala indisponível
-    if (message && !synth) console.warn('[Player.js] Mensagem recebida, mas API de Fala não está disponível.');
-    console.log('[Player.js] Tocando vídeo diretamente.');
     loadAndPlayVideo();
   }
-
 }
 
-// Envia um sinal a cada 5 minutos para o servidor não dormir
+// Ping
 setInterval(() => {
-    if (socket && socket.connected) {
-        console.log('[Player.js] Enviando ping para o servidor...');
-        socket.emit('player:ping');
-    }
+    if (socket && socket.connected) socket.emit('player:ping');
 }, 5 * 60 * 1000);
