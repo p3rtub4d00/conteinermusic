@@ -357,11 +357,9 @@ app.post("/webhook", async (req, res) => {
 
         await QueueModel.insertMany(customerVideos);
 
-        // 🔥 NOVA LINHA: Avisa a TV que tem pedido novo REAL para aparecer o popup
         if (customerVideos.length > 0) {
             io.emit('player:newOrderNotification', { title: customerVideos[0].title });
         }
-        // 🔥 FIM DA NOVA LINHA
 
         if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
            playNextInQueue();
@@ -420,6 +418,12 @@ io.on("connection", async (socket) => {
 
   socket.on('player:videoEnded', () => playNextInQueue());
   socket.on('player:ping', () => console.log(`[Ping] Keep-alive: ${socket.id}`));
+
+  // 🔥 [NOVO] Evento de Reação (Chuva de Emojis)
+  socket.on('reaction', (emoji) => {
+      // Repassa o emoji para todos os players conectados (TVs)
+      io.emit('player:showReaction', emoji);
+  });
 
   // Admin Events
   socket.on('admin:getList', async () => {
