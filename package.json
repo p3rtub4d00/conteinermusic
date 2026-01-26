@@ -1,21 +1,24 @@
 {
-  "name": "Admin Contêiner Music",
-  "short_name": "Admin Music",
-  "start_url": "/admin.html",
-  "display": "standalone",
-  "background_color": "#1a1a1a",
-  "theme_color": "#e67e22",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/images/logo.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "name": "meu-site-youtube",
+  "version": "1.0.0",
+  "description": "Sistema de seleção de vídeos do YouTube com pagamento via PIX, MongoDB e Segurança",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Conteiner Beer",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mercadopago": "^2.0.9",
+    "socket.io": "^4.7.5",
+    "youtube-search-api": "^1.2.0",
+    "mongoose": "^8.2.0",
+    "express-basic-auth": "^1.2.1"
+  }
 }
