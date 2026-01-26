@@ -30,6 +30,9 @@ const modalMessageText = document.getElementById('modalMessageText');
 const modalBtnConfirm = document.getElementById('modalBtnConfirm');
 const MESSAGE_COST = 1.00;
 
+// [NOVO] Elementos de Reação
+const reactBtns = document.querySelectorAll('.react-btn');
+
 // --- Estado Global ---
 let selectedPackage = { limit: 3, price: 2.00, description: "Pacote 3 Músicas" };
 let selectedVideos = [];
@@ -38,30 +41,43 @@ let finalDescription = "";
 let finalMessage = null;
 let resetTimeoutId = null;
 
-// --- ✨ NOVA FUNÇÃO: Toastify Helper ---
+// --- ✨ Toastify Helper ---
 function showToast(message, type = 'info') {
-    // Define cores baseadas no tipo (info, error, success)
     let backgroundColor;
     if (type === 'error') backgroundColor = "linear-gradient(to right, #ff5f6d, #ffc371)";
     else if (type === 'success') backgroundColor = "linear-gradient(to right, #00b09b, #96c93d)";
-    else backgroundColor = "linear-gradient(to right, #007bff, #00c6ff)"; // info/default
+    else backgroundColor = "linear-gradient(to right, #007bff, #00c6ff)";
 
     Toastify({
         text: message,
         duration: 3000,
         close: true,
-        gravity: "top", // `top` or `bottom`
-        position: "center", // `left`, `center` or `right`
-        stopOnFocus: true, // Prevents dismissing of toast on hover
-        style: {
-            background: backgroundColor,
-            borderRadius: "10px",
-            fontSize: "1rem"
-        },
+        gravity: "top", 
+        position: "center", 
+        stopOnFocus: true, 
+        style: { background: backgroundColor, borderRadius: "10px", fontSize: "1rem" },
     }).showToast();
 }
 
-// --- Funções Auxiliares ---
+// [NOVO] Lógica dos Botões de Reação
+if (reactBtns) {
+    reactBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const emoji = btn.getAttribute('data-emoji');
+            if (emoji && socket) {
+                // Envia para o servidor
+                socket.emit('reaction', emoji);
+                // Feedback visual de clique (animação rápida)
+                btn.style.transform = 'scale(1.2)';
+                setTimeout(() => btn.style.transform = 'scale(1)', 150);
+                showToast(`Reação enviada! ${emoji}`, 'success');
+            }
+        });
+    });
+}
+
+
+// --- Funções Auxiliares (Pacotes, Busca, etc.) ---
 
 function updateSelectedPackage() {
     const checkedRadio = document.querySelector('input[name="package"]:checked');
@@ -105,7 +121,6 @@ async function buscarVideos() {
   if (!searchInput || !resultsDiv) return;
 
   const q = searchInput.value.trim();
-  // 🔄 SUBSTITUIÇÃO DE ALERT
   if (!q) return showToast('Digite o nome de uma música ou artista!', 'error');
 
   resultsDiv.innerHTML = '<p style="color:white; text-align:center">Buscando...</p>';
@@ -153,7 +168,6 @@ window.addVideo = (id, title) => {
   if (!id || !title) return;
   if (selectedVideos.find(v => v.id === id)) return;
   
-  // 🔄 SUBSTITUIÇÃO DE ALERT
   if (selectedVideos.length >= selectedPackage.limit) {
     return showToast(`Limite de ${selectedPackage.limit} músicas atingido! Remova uma para adicionar outra.`, 'error');
   }
@@ -225,7 +239,6 @@ async function proceedToPayment() {
   if(pagarBtn) pagarBtn.disabled = true;
 
   if (!socket || !socket.id) {
-      // 🔄 SUBSTITUIÇÃO DE ALERT
       showToast("Erro de conexão. Aguarde um momento e tente novamente.", 'error');
       updatePaymentButtonText();
       return;
@@ -274,13 +287,12 @@ async function proceedToPayment() {
 
   } catch (error) {
        console.error("Erro pagamento:", error);
-       // 🔄 SUBSTITUIÇÃO DE ALERT
        showToast(`Erro ao gerar PIX: ${error.message}`, 'error');
        updatePaymentButtonText();
   }
 }
 
-// --- Event Listeners (Mantidos iguais) ---
+// --- Event Listeners ---
 
 if (searchBtn) searchBtn.addEventListener('click', buscarVideos);
 
@@ -365,7 +377,6 @@ if (copyPixBtn) {
                 }
             }, 2000);
         }, (err) => {
-            // 🔄 SUBSTITUIÇÃO DE ALERT
             showToast('Erro ao copiar automaticamente. Copie manualmente.', 'error');
         });
     });
@@ -397,7 +408,6 @@ socket.on('paymentConfirmed', () => {
         paymentStatusMsg.style.display = 'block';
         pixArea.style.display = 'block';
         
-        // 🔄 NOVO: Toast de sucesso
         showToast("Pagamento Confirmado! Divirta-se!", 'success');
 
         if(resetTimeoutId) clearTimeout(resetTimeoutId);
@@ -405,7 +415,7 @@ socket.on('paymentConfirmed', () => {
         resetTimeoutId = setTimeout(() => {
             resetUI();
             resetTimeoutId = null;
-        }, 5000); // Aumentei um pouco para dar tempo de ler
+        }, 5000);
     }
 });
 
