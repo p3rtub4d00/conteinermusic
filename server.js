@@ -61,7 +61,7 @@ const SearchCacheSchema = new mongoose.Schema({
 });
 const SearchCacheModel = mongoose.model('SearchCache', SearchCacheSchema);
 
-// 5. Fila de Reprodução (Persistente)
+// 5. Fila de Reprodução
 const QueueSchema = new mongoose.Schema({
   videoId: String,
   title: String,
@@ -119,7 +119,6 @@ async function getConfig() {
     return config;
   } catch (error) {
     console.error('[DB] Erro ao ler Config:', error);
-    // Retorna um fallback para não travar o sistema
     return { dailyRevenue: 0.0, currentPromoText: "Erro ao carregar", currentVolume: 50, isMuted: true };
   }
 }
@@ -141,7 +140,6 @@ async function fetchVideoIdByName(name) {
 // Controle do Player
 async function broadcastPlayerState() {
   try {
-    // Busca fila do banco
     const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 });
     
     const formattedQueue = queue.map(item => ({
@@ -359,6 +357,12 @@ app.post("/webhook", async (req, res) => {
 
         await QueueModel.insertMany(customerVideos);
 
+        // 🔥 NOVA LINHA: Avisa a TV que tem pedido novo REAL para aparecer o popup
+        if (customerVideos.length > 0) {
+            io.emit('player:newOrderNotification', { title: customerVideos[0].title });
+        }
+        // 🔥 FIM DA NOVA LINHA
+
         if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
            playNextInQueue();
         } else {
@@ -384,10 +388,8 @@ app.post("/webhook", async (req, res) => {
 io.on("connection", async (socket) => {
   console.log("[Socket] Conectado:", socket.id);
   
-  // 1. Tenta pegar config do banco com proteção de erro
   const config = await getConfig();
   
-  // 2. Busca fila atual
   let formattedQueue = [];
   try {
       const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 });
@@ -434,7 +436,6 @@ io.on("connection", async (socket) => {
 
     socket.emit('admin:updateRevenue', freshConfig.dailyRevenue);
     
-    // Atualiza estado do player
     try {
         const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 });
         const formattedQueue = queue.map(item => ({ id: item.videoId, title: item.title, isCustomer: item.isCustomer, message: item.message }));
@@ -445,13 +446,11 @@ io.on("connection", async (socket) => {
     socket.emit('admin:loadPromoText', freshConfig.currentPromoText);
   });
 
-  // CORREÇÃO CRÍTICA: Salvar lista de forma segura
   socket.on('admin:saveInactivityList', async (nameArray) => {
     console.log('[Admin] Solicitado salvar nova lista de inatividade...');
     const newItems = [];
     const names = Array.isArray(nameArray) ? nameArray : [];
 
-    // 1. Primeiro tenta buscar os IDs. NÃO apaga a lista antiga ainda.
     try {
         for (const name of names) {
             if(name.trim().length > 0) {
@@ -464,10 +463,9 @@ io.on("connection", async (socket) => {
             }
         }
 
-        // 2. Se conseguiu processar pelo menos uma música, aí sim atualiza o banco
         if (newItems.length > 0) {
-            await InactivityModel.deleteMany({}); // Limpa a antiga
-            await InactivityModel.insertMany(newItems); // Salva a nova
+            await InactivityModel.deleteMany({}); 
+            await InactivityModel.insertMany(newItems); 
             console.log(`[Admin] Lista salva com ${newItems.length} músicas.`);
         } else {
             console.warn('[Admin] Nenhuma música válida encontrada ou lista vazia enviada. Mantendo lista anterior.');
