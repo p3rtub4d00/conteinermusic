@@ -1,4 +1,7 @@
-/* --- Contêiner Music Box: Dark Industrial Theme (Camuflado) --- */
+/* --- Contêiner Music Box: Dark Industrial Theme (Final Polish) --- */
+
+/* IMPORTANDO FONTE PROFISSIONAL (Inter) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
 
 /* 1. RESET & VARIÁVEIS GLOBAIS */
 * {
@@ -9,26 +12,21 @@
 }
 
 :root {
-  /* Paleta Dark Industrial - Focada no Preto/Laranja */
-  --bg-main: #050505; /* Preto quase absoluto para o fundo */
-  --bg-panel: #141414; /* Cinza chumbo para os cartões */
-  --bg-panel-lighter: #1f1f1f; /* Cinza um pouco mais claro para hover */
-  
-  --border-subtle: #333333; /* Bordas metálicas escuras */
-
+  --bg-main: #050505;
+  --bg-panel: #141414;
+  --bg-panel-lighter: #1f1f1f;
+  --border-subtle: #333333;
   --text-primary: #ffffff;
   --text-secondary: #a0a0a0;
-  
-  /* Cor da Marca (Laranja/Dourado da Logo) */
-  --brand-orange: #e67e22; 
+  --brand-orange: #e67e22;
   --brand-orange-hover: #d35400;
-  --brand-green: #27ae60; /* Verde para sucesso/selecionado */
+  --brand-green: #27ae60;
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Usando a nova fonte profissional 'Inter' */
+  font-family: 'Inter', sans-serif;
   background-color: var(--bg-main);
-  /* Textura sutil de fundo estilo "asfalto/metal" */
   background-image: radial-gradient(circle at top, #1a1a1a 0%, var(--bg-main) 60%);
   background-attachment: fixed;
   color: var(--text-primary);
@@ -43,7 +41,7 @@ body {
   padding-bottom: 50px;
 }
 
-/* 2. HEADER & LOGO (A mágica da camuflagem aqui) */
+/* 2. HEADER & LOGO */
 header {
   text-align: center;
   margin-bottom: 35px;
@@ -52,76 +50,77 @@ header {
 #logo {
   max-width: 160px;
   height: auto;
-  /* Remove sombras que destacam o quadrado da logo */
-  filter: none; 
   margin-bottom: 15px;
-  /* Garante que se a logo tiver fundo preto, ela suma no body preto */
+  /* ✨ BORDAS REDONDAS NA LOGO ✨ */
+  border-radius: 20px;
+  /* Sombra sutil para destacar do fundo preto */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
 h1 {
   font-size: 1.8rem;
   font-weight: 800;
-  color: var(--brand-orange); /* Título laranja para combinar */
+  color: var(--brand-orange);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 5px;
-  text-shadow: 0 2px 10px rgba(230, 126, 34, 0.2); /* Brilho sutil laranja */
 }
 
 .welcome-message {
   font-size: 1rem;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
-/* 3. PAINÉIS DARK (Substitui o "Vidro") */
-/* Estilo para todos os containers (Reações, Busca, Seleção) */
+/* 3. PAINÉIS DARK */
 .dark-panel {
   background: var(--bg-panel);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Sombra escura pesada */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
-/* 4. ÁREA DE REAÇÕES */
+/* 4. ÁREA DE REAÇÕES (EMOJIS LIMPOS) */
 #reactions-area {
   composes: dark-panel;
-  padding: 20px;
+  padding: 25px 20px;
   margin-bottom: 30px;
   text-align: center;
-  border-top: 3px solid var(--brand-orange); /* Sotaque laranja no topo */
+  border-top: 3px solid var(--brand-orange);
 }
 
 #reactions-area p {
   color: var(--text-primary);
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .reaction-buttons {
   display: flex;
   justify-content: center;
-  gap: 15px;
+  gap: 25px; /* Mais espaço entre os emojis */
 }
 
+/* ✨ EMOJIS COMO EMOJIS (Sem fundo de botão pesado) ✨ */
 .react-btn {
-  background: var(--bg-panel-lighter);
-  border: 1px solid var(--border-subtle);
-  font-size: 1.8rem;
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
+  background: transparent; /* Fundo transparente */
+  border: none; /* Sem borda */
+  font-size: 2.5rem; /* Emojis maiores */
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  padding: 0;
+  /* Sombra de texto sutil para "descolar" do fundo */
+  text-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
-.react-btn:active, .react-btn:hover {
-  transform: scale(1.1);
-  border-color: var(--brand-orange);
-  background: #333;
-  box-shadow: 0 0 15px rgba(230, 126, 34, 0.3);
+.react-btn:hover {
+  transform: scale(1.3) translateY(-5px); /* Aumenta e sobe um pouco */
+}
+
+.react-btn:active {
+  transform: scale(1.1) translateY(-2px);
 }
 
 /* 5. SELEÇÃO DE PACOTES */
@@ -134,13 +133,13 @@ h1 {
 
 .package-option {
   composes: dark-panel;
-  padding: 15px;
+  padding: 20px 15px;
   cursor: pointer;
   transition: all 0.3s ease;
   flex: 1;
   text-align: center;
   max-width: 200px;
-  border: 2px solid var(--border-subtle); /* Borda padrão mais grossa */
+  border: 2px solid var(--border-subtle);
 }
 
 .package-option:active { transform: scale(0.98); }
@@ -149,24 +148,24 @@ h1 {
 
 .package-option span {
   display: block;
-  font-weight: 700;
-  font-size: 1.2rem;
+  font-weight: 800; /* Fonte mais grossa */
+  font-size: 1.3rem;
   color: var(--text-primary);
+  text-transform: uppercase;
 }
 
 .package-option small {
   color: var(--brand-orange);
-  font-weight: 600;
+  font-weight: 700;
   display: block;
-  margin-top: 8px;
-  font-size: 0.95rem;
+  margin-top: 10px;
+  font-size: 1rem;
 }
 
-/* Estado Selecionado (Laranja Forte) */
 .package-option:has(input:checked) {
   border-color: var(--brand-orange);
-  background: linear-gradient(to bottom, var(--bg-panel), rgba(230, 126, 34, 0.1));
-  box-shadow: 0 0 20px rgba(230, 126, 34, 0.2);
+  background: linear-gradient(to bottom, var(--bg-panel), rgba(230, 126, 34, 0.15));
+  box-shadow: 0 0 25px rgba(230, 126, 34, 0.25);
 }
 
 /* 6. TOCANDO AGORA */
@@ -177,21 +176,21 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left: 4px solid var(--brand-orange); /* Laranja aqui também */
+  border-left: 4px solid var(--brand-orange);
   background: var(--bg-panel-lighter);
 }
 
 #now-playing-area .label {
   color: var(--brand-orange);
-  font-weight: 700;
+  font-weight: 800;
   margin-right: 10px;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   text-transform: uppercase;
 }
 
-#nowPlayingTitle { font-weight: 500; }
+#nowPlayingTitle { font-weight: 600; }
 
-/* 7. BUSCA (Estilo Industrial) */
+/* 7. BUSCA */
 #search-area {
   display: flex;
   gap: 10px;
@@ -203,9 +202,10 @@ h1 {
   background: var(--bg-panel);
   border: 2px solid var(--border-subtle);
   border-radius: 8px;
-  padding: 14px 16px;
+  padding: 16px;
   color: white;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-family: inherit; /* Usa a fonte 'Inter' */
   outline: none;
   transition: all 0.3s;
 }
@@ -220,17 +220,18 @@ h1 {
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 0 25px;
-  font-weight: 700;
-  font-size: 1rem;
+  padding: 0 30px;
+  font-weight: 800;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: background 0.2s;
   text-transform: uppercase;
+  font-family: inherit;
 }
 
 #searchBtn:active, #searchBtn:hover { background: var(--brand-orange-hover); }
 
-/* 8. RESULTADOS (Cards Sólidos) */
+/* 8. RESULTADOS */
 #results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
@@ -249,22 +250,21 @@ h1 {
   transition: transform 0.2s, border-color 0.2s;
   padding: 0;
   border-radius: 12px;
-  border: 2px solid transparent; /* Prepara para borda laranja */
+  border: 2px solid transparent;
 }
 
 .video-item:hover { border-color: var(--border-subtle); }
 
 .video-item img {
-  width: 110px;
-  height: 110px;
+  width: 120px;
+  height: 120px;
   object-fit: cover;
   flex-shrink: 0;
-  border-right: 2px solid var(--bg-main);
 }
 
 @media (min-width: 600px) {
   .video-item { display: block; }
-  .video-item img { width: 100%; height: 150px; border-right: none; border-bottom: 2px solid var(--bg-main); }
+  .video-item img { width: 100%; height: 160px; }
 }
 
 .video-item .info {
@@ -277,18 +277,19 @@ h1 {
 }
 
 .video-item strong {
-  font-size: 1rem;
+  font-size: 1.1rem;
   margin-bottom: 5px;
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text-primary);
+  font-weight: 700;
 }
 
 .video-item small {
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   margin-bottom: 12px;
 }
 
@@ -296,14 +297,15 @@ h1 {
   background: transparent;
   border: 2px solid var(--brand-orange);
   color: var(--brand-orange);
-  padding: 8px 15px;
+  padding: 10px 20px;
   border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 800;
   cursor: pointer;
   align-self: flex-start;
   transition: all 0.2s;
   text-transform: uppercase;
+  font-family: inherit;
 }
 
 .video-item .select-btn:active, .video-item .select-btn:hover:not(:disabled) {
@@ -311,7 +313,6 @@ h1 {
   color: white;
 }
 
-/* Card Selecionado */
 .video-item.selected-video {
   border: 2px solid var(--brand-green);
   background: rgba(39, 174, 96, 0.05);
@@ -331,11 +332,11 @@ h1 {
 }
 
 #selection-area h2 {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   color: var(--brand-orange);
   margin-bottom: 20px;
   text-transform: uppercase;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 #selected li {
@@ -347,36 +348,36 @@ h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 #selected li button {
-  background: none; border: none; font-size: 1.1rem; padding: 5px; cursor: pointer; transition: transform 0.2s;
+  background: none; border: none; font-size: 1.2rem; padding: 5px; cursor: pointer; transition: transform 0.2s;
 }
 #selected li button:hover { transform: scale(1.2); }
 
-/* Botão de Pagar (Laranja Industrial) */
 #pagarBtn {
   width: 100%;
   background: var(--brand-orange);
   color: white;
   border: none;
-  padding: 18px;
-  font-size: 1.2rem;
-  font-weight: 800;
+  padding: 20px;
+  font-size: 1.4rem;
+  font-weight: 900;
   border-radius: 12px;
-  box-shadow: 0 5px 20px rgba(230, 126, 34, 0.4);
+  box-shadow: 0 5px 25px rgba(230, 126, 34, 0.4);
   cursor: pointer;
   transition: all 0.2s;
   text-transform: uppercase;
   letter-spacing: 1px;
+  font-family: inherit;
 }
 
 #pagarBtn:active:not(:disabled), #pagarBtn:hover:not(:disabled) {
   background: var(--brand-orange-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(230, 126, 34, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(230, 126, 34, 0.6);
 }
 
 #pagarBtn:disabled {
@@ -386,11 +387,7 @@ h1 {
 /* 10. ÁREA DO PIX */
 #pixArea {
   composes: dark-panel;
-  background: #fff; /* Fundo branco para o QR Code */
-  color: #111;
-  padding: 30px;
-  margin-top: 30px;
-  text-align: center;
+  background: #fff; color: #111; padding: 30px; margin-top: 30px; text-align: center;
 }
 #pixArea h2 { color: #111; margin-bottom: 20px; font-weight: 800; }
 #qrCode { display: block; margin: 0 auto 20px; max-width: 250px; border: 5px solid #111; }
@@ -398,26 +395,26 @@ h1 {
   width: 100%; background: #f5f5f5; border: 2px solid #111; padding: 15px; border-radius: 8px; font-family: monospace; margin-bottom: 15px; color: #111; font-weight: bold;
 }
 .btn-copy {
-  background: #111; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+  background: #111; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-weight: 800; cursor: pointer; text-transform: uppercase; font-family: inherit;
 }
 .btn-copy.copied { background: var(--brand-green); }
 
 /* 11. MODAL */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.95);
   display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s;
 }
 .modal-overlay[style*="display: flex"] { opacity: 1; pointer-events: all; }
 .modal-content {
-  background: var(--bg-panel); border: 2px solid var(--brand-orange); padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; text-align: center;
+  background: var(--bg-panel); border: 3px solid var(--brand-orange); padding: 35px; border-radius: 20px; width: 100%; max-width: 450px; text-align: center;
 }
-.btn-modal { width: 100%; padding: 15px; border-radius: 10px; margin-top: 12px; font-weight: 700; border: none; cursor: pointer; text-transform: uppercase; }
+.btn-modal { width: 100%; padding: 18px; border-radius: 12px; margin-top: 15px; font-weight: 800; border: none; cursor: pointer; text-transform: uppercase; font-family: inherit; font-size: 1.1rem;}
 .btn-modal-yes { background: var(--brand-orange); color: white; }
-.btn-modal-no { background: transparent; border: 2px solid #555; color: #aaa; }
-.modal-close-btn { color: var(--text-secondary); font-size: 2rem; top: 15px; right: 20px; }
+.btn-modal-no { background: transparent; border: 3px solid #555; color: #aaa; }
+.modal-close-btn { color: var(--text-secondary); font-size: 2.5rem; top: 15px; right: 20px; }
 
-/* Ajuste Toastify */
+/* Toastify Profissional */
 .toastify {
-  border-radius: 8px !important; font-weight: 600 !important; font-family: inherit !important;
+  border-radius: 12px !important; font-weight: 700 !important; font-family: 'Inter', sans-serif !important; padding: 15px 20px !important;
 }
