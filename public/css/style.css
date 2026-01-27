@@ -1,38 +1,36 @@
-/* --- Contêiner Music Box: Premium UI Theme --- */
+/* --- Contêiner Music Box: Dark Industrial Theme (Camuflado) --- */
 
 /* 1. RESET & VARIÁVEIS GLOBAIS */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent; /* Remove flash azul no toque */
+  -webkit-tap-highlight-color: transparent;
 }
 
 :root {
-  /* Paleta Dark Premium */
-  --bg-gradient-start: #0f0c29;
-  --bg-gradient-mid: #302b63;
-  --bg-gradient-end: #24243e;
+  /* Paleta Dark Industrial - Focada no Preto/Laranja */
+  --bg-main: #050505; /* Preto quase absoluto para o fundo */
+  --bg-panel: #141414; /* Cinza chumbo para os cartões */
+  --bg-panel-lighter: #1f1f1f; /* Cinza um pouco mais claro para hover */
   
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-blur: 12px;
+  --border-subtle: #333333; /* Bordas metálicas escuras */
 
   --text-primary: #ffffff;
-  --text-secondary: #b3b3b3;
+  --text-secondary: #a0a0a0;
   
-  /* Cores de Ação (Neon/Vibrante) */
-  --brand-orange: #ff9f43;
-  --brand-green: #2ecc71; /* Verde Spotify */
-  --brand-blue: #0984e3;
-  --brand-red: #ff6b6b;
-  --brand-gradient: linear-gradient(135deg, #ff9f43, #ee5a24);
+  /* Cor da Marca (Laranja/Dourado da Logo) */
+  --brand-orange: #e67e22; 
+  --brand-orange-hover: #d35400;
+  --brand-green: #27ae60; /* Verde para sucesso/selecionado */
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end));
-  background-attachment: fixed; /* Fundo fixo ao rolar */
+  background-color: var(--bg-main);
+  /* Textura sutil de fundo estilo "asfalto/metal" */
+  background-image: radial-gradient(circle at top, #1a1a1a 0%, var(--bg-main) 60%);
+  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   padding: 20px 15px;
@@ -42,89 +40,88 @@ body {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding-bottom: 50px; /* Espaço pro footer */
+  padding-bottom: 50px;
 }
 
-/* 2. HEADER & LOGO */
+/* 2. HEADER & LOGO (A mágica da camuflagem aqui) */
 header {
   text-align: center;
-  margin-bottom: 30px;
-  animation: fadeIn 0.8s ease-out;
+  margin-bottom: 35px;
 }
 
 #logo {
-  max-width: 140px;
+  max-width: 160px;
   height: auto;
-  filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
-  margin-bottom: 10px;
+  /* Remove sombras que destacam o quadrado da logo */
+  filter: none; 
+  margin-bottom: 15px;
+  /* Garante que se a logo tiver fundo preto, ela suma no body preto */
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 800;
-  background: var(--brand-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--brand-orange); /* Título laranja para combinar */
+  text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 5px;
-  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(230, 126, 34, 0.2); /* Brilho sutil laranja */
 }
 
 .welcome-message {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--text-secondary);
-  font-weight: 300;
 }
 
-/* 3. CARDS & GLASSMORPHISM (Estilo Vidro) */
-.glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+/* 3. PAINÉIS DARK (Substitui o "Vidro") */
+/* Estilo para todos os containers (Reações, Busca, Seleção) */
+.dark-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Sombra escura pesada */
 }
 
-/* 4. ÁREA DE REAÇÕES (EMOJIS) */
+/* 4. ÁREA DE REAÇÕES */
 #reactions-area {
-  composes: glass-panel;
+  composes: dark-panel;
   padding: 20px;
-  margin-bottom: 25px;
+  margin-bottom: 30px;
   text-align: center;
+  border-top: 3px solid var(--brand-orange); /* Sotaque laranja no topo */
 }
 
 #reactions-area p {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   margin-bottom: 15px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .reaction-buttons {
   display: flex;
   justify-content: center;
   gap: 15px;
-  flex-wrap: wrap;
 }
 
 .react-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: var(--bg-panel-lighter);
+  border: 1px solid var(--border-subtle);
   font-size: 1.8rem;
   width: 55px;
   height: 55px;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.react-btn:active {
-  transform: scale(0.9);
-  background: rgba(255, 255, 255, 0.2);
+.react-btn:active, .react-btn:hover {
+  transform: scale(1.1);
+  border-color: var(--brand-orange);
+  background: #333;
+  box-shadow: 0 0 15px rgba(230, 126, 34, 0.3);
 }
 
 /* 5. SELEÇÃO DE PACOTES */
@@ -132,34 +129,28 @@ h1 {
   display: flex;
   justify-content: center;
   gap: 15px;
-  margin-bottom: 30px;
+  margin-bottom: 35px;
 }
 
 .package-option {
-  composes: glass-panel;
+  composes: dark-panel;
   padding: 15px;
   cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s;
+  transition: all 0.3s ease;
   flex: 1;
   text-align: center;
-  max-width: 180px;
-  position: relative;
-  overflow: hidden;
+  max-width: 200px;
+  border: 2px solid var(--border-subtle); /* Borda padrão mais grossa */
 }
 
 .package-option:active { transform: scale(0.98); }
-
-.package-option label {
-  cursor: pointer;
-  display: block;
-}
-
+.package-option label { cursor: pointer; display: block; }
 .package-option input[type="radio"] { display: none; }
 
 .package-option span {
   display: block;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: var(--text-primary);
 }
 
@@ -167,46 +158,40 @@ h1 {
   color: var(--brand-orange);
   font-weight: 600;
   display: block;
-  margin-top: 5px;
-  font-size: 0.9rem;
+  margin-top: 8px;
+  font-size: 0.95rem;
 }
 
-/* Estado Selecionado */
+/* Estado Selecionado (Laranja Forte) */
 .package-option:has(input:checked) {
   border-color: var(--brand-orange);
-  background: rgba(255, 159, 67, 0.15); /* Orange tint */
-  box-shadow: 0 0 15px rgba(255, 159, 67, 0.3);
+  background: linear-gradient(to bottom, var(--bg-panel), rgba(230, 126, 34, 0.1));
+  box-shadow: 0 0 20px rgba(230, 126, 34, 0.2);
 }
 
 /* 6. TOCANDO AGORA */
 #now-playing-area {
-  composes: glass-panel;
+  composes: dark-panel;
   padding: 15px;
-  margin-bottom: 25px;
+  margin-bottom: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left: 4px solid var(--brand-green);
+  border-left: 4px solid var(--brand-orange); /* Laranja aqui também */
+  background: var(--bg-panel-lighter);
 }
 
 #now-playing-area .label {
-  color: var(--brand-green);
+  color: var(--brand-orange);
   font-weight: 700;
   margin-right: 10px;
   font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
-#nowPlayingTitle {
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 70%;
-}
+#nowPlayingTitle { font-weight: 500; }
 
-/* 7. BUSCA (Inputs Modernos) */
+/* 7. BUSCA (Estilo Industrial) */
 #search-area {
   display: flex;
   gap: 10px;
@@ -215,38 +200,40 @@ h1 {
 
 #searchInput {
   flex-grow: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
+  background: var(--bg-panel);
+  border: 2px solid var(--border-subtle);
+  border-radius: 8px;
   padding: 14px 16px;
   color: white;
   font-size: 1rem;
   outline: none;
-  transition: border-color 0.3s;
+  transition: all 0.3s;
 }
 
 #searchInput:focus {
   border-color: var(--brand-orange);
-  box-shadow: 0 0 0 2px rgba(255, 159, 67, 0.2);
+  background: var(--bg-main);
 }
 
 #searchBtn {
   background: var(--brand-orange);
   color: white;
   border: none;
-  border-radius: 12px;
-  padding: 0 20px;
+  border-radius: 8px;
+  padding: 0 25px;
   font-weight: 700;
+  font-size: 1rem;
   cursor: pointer;
-  transition: filter 0.2s;
+  transition: background 0.2s;
+  text-transform: uppercase;
 }
 
-#searchBtn:active { filter: brightness(0.9); }
+#searchBtn:active, #searchBtn:hover { background: var(--brand-orange-hover); }
 
-/* 8. RESULTADOS (Cards de Vídeo) */
+/* 8. RESULTADOS (Cards Sólidos) */
 #results {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100%, 1fr)); /* 1 por linha no mobile */
+  grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
   gap: 15px;
   width: 100%;
 }
@@ -256,72 +243,78 @@ h1 {
 }
 
 .video-item {
-  composes: glass-panel;
-  display: flex; /* Layout horizontal no mobile */
+  composes: dark-panel;
+  display: flex;
   overflow: hidden;
-  transition: transform 0.2s;
+  transition: transform 0.2s, border-color 0.2s;
   padding: 0;
   border-radius: 12px;
+  border: 2px solid transparent; /* Prepara para borda laranja */
 }
 
+.video-item:hover { border-color: var(--border-subtle); }
+
 .video-item img {
-  width: 100px; /* Thumb menor lateral */
-  height: 100px;
+  width: 110px;
+  height: 110px;
   object-fit: cover;
   flex-shrink: 0;
+  border-right: 2px solid var(--bg-main);
 }
 
 @media (min-width: 600px) {
   .video-item { display: block; }
-  .video-item img { width: 100%; height: 140px; }
+  .video-item img { width: 100%; height: 150px; border-right: none; border-bottom: 2px solid var(--bg-main); }
 }
 
 .video-item .info {
-  padding: 12px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   flex-grow: 1;
-  min-width: 0; /* Fix flex overflow */
+  min-width: 0;
 }
 
 .video-item strong {
-  font-size: 0.95rem;
+  font-size: 1rem;
   margin-bottom: 5px;
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-primary);
 }
 
 .video-item small {
   color: var(--text-secondary);
-  font-size: 0.8rem;
-  margin-bottom: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
 }
 
 .video-item .select-btn {
   background: transparent;
-  border: 1px solid var(--brand-orange);
+  border: 2px solid var(--brand-orange);
   color: var(--brand-orange);
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  padding: 8px 15px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
   align-self: flex-start;
   transition: all 0.2s;
+  text-transform: uppercase;
 }
 
-.video-item .select-btn:active {
+.video-item .select-btn:active, .video-item .select-btn:hover:not(:disabled) {
   background: var(--brand-orange);
   color: white;
 }
 
 /* Card Selecionado */
 .video-item.selected-video {
-  border: 1px solid var(--brand-green);
-  background: rgba(46, 204, 113, 0.1);
+  border: 2px solid var(--brand-green);
+  background: rgba(39, 174, 96, 0.05);
 }
 .video-item.selected-video .select-btn {
   background: var(--brand-green);
@@ -331,155 +324,100 @@ h1 {
 
 /* 9. LISTA DE SELEÇÃO & PAGAMENTO */
 #selection-area {
-  composes: glass-panel;
-  padding: 20px;
-  margin: 30px 0;
+  composes: dark-panel;
+  padding: 25px;
+  margin: 35px 0;
+  text-align: left;
 }
 
 #selection-area h2 {
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   color: var(--brand-orange);
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 10px;
+  font-weight: 800;
 }
 
 #selected li {
-  background: rgba(0,0,0,0.2);
-  margin-bottom: 8px;
-  padding: 12px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 10px;
+  padding: 15px;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 #selected li button {
-  background: none;
-  border: none;
-  font-size: 1rem;
-  padding: 5px;
-  cursor: pointer;
+  background: none; border: none; font-size: 1.1rem; padding: 5px; cursor: pointer; transition: transform 0.2s;
 }
+#selected li button:hover { transform: scale(1.2); }
 
-/* Botão de Pagar (O Principal) */
+/* Botão de Pagar (Laranja Industrial) */
 #pagarBtn {
   width: 100%;
-  background: var(--brand-green);
+  background: var(--brand-orange);
   color: white;
   border: none;
-  padding: 16px;
-  font-size: 1.1rem;
+  padding: 18px;
+  font-size: 1.2rem;
   font-weight: 800;
-  border-radius: 50px; /* Pill shape */
-  box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(230, 126, 34, 0.4);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.2s;
   text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-#pagarBtn:active:not(:disabled) {
-  transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3);
+#pagarBtn:active:not(:disabled), #pagarBtn:hover:not(:disabled) {
+  background: var(--brand-orange-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(230, 126, 34, 0.5);
 }
 
 #pagarBtn:disabled {
-  background: #444;
-  color: #888;
-  box-shadow: none;
-  cursor: not-allowed;
+  background: #444; color: #888; box-shadow: none; cursor: not-allowed; transform: none;
 }
 
-/* 10. ÁREA DO PIX (Popup interno) */
+/* 10. ÁREA DO PIX */
 #pixArea {
-  composes: glass-panel;
-  background: #ffffff; /* Fundo branco para ler QR */
+  composes: dark-panel;
+  background: #fff; /* Fundo branco para o QR Code */
   color: #111;
-  padding: 25px;
-  margin-top: 25px;
-  text-align: center;
-  animation: slideUp 0.4s ease-out;
-}
-
-#pixArea h2 { margin-bottom: 15px; color: #333; }
-#qrCode { display: block; margin: 0 auto 15px; max-width: 220px; }
-
-.copia-cola-wrapper textarea {
-  width: 100%;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 10px;
-  border-radius: 8px;
-  font-family: monospace;
-  margin-bottom: 10px;
-  color: #333;
-}
-
-.btn-copy {
-  background: var(--brand-blue);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* 11. MODAL (Dedicatoria) */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(5px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  padding: 20px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
-}
-
-.modal-overlay[style*="display: flex"] {
-  opacity: 1;
-  pointer-events: all;
-}
-
-.modal-content {
-  background: #1e1e2f;
-  border: 1px solid var(--glass-border);
   padding: 30px;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 400px;
+  margin-top: 30px;
   text-align: center;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 }
-
-.btn-modal {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  margin-top: 10px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
+#pixArea h2 { color: #111; margin-bottom: 20px; font-weight: 800; }
+#qrCode { display: block; margin: 0 auto 20px; max-width: 250px; border: 5px solid #111; }
+.copia-cola-wrapper textarea {
+  width: 100%; background: #f5f5f5; border: 2px solid #111; padding: 15px; border-radius: 8px; font-family: monospace; margin-bottom: 15px; color: #111; font-weight: bold;
 }
+.btn-copy {
+  background: #111; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+}
+.btn-copy.copied { background: var(--brand-green); }
 
-.btn-modal-yes { background: var(--brand-green); color: white; }
+/* 11. MODAL */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.modal-overlay[style*="display: flex"] { opacity: 1; pointer-events: all; }
+.modal-content {
+  background: var(--bg-panel); border: 2px solid var(--brand-orange); padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; text-align: center;
+}
+.btn-modal { width: 100%; padding: 15px; border-radius: 10px; margin-top: 12px; font-weight: 700; border: none; cursor: pointer; text-transform: uppercase; }
+.btn-modal-yes { background: var(--brand-orange); color: white; }
 .btn-modal-no { background: transparent; border: 2px solid #555; color: #aaa; }
+.modal-close-btn { color: var(--text-secondary); font-size: 2rem; top: 15px; right: 20px; }
 
-/* Animações */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-/* Ajuste Toastify (Notificações) */
+/* Ajuste Toastify */
 .toastify {
-  border-radius: 12px !important;
-  font-family: inherit !important;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+  border-radius: 8px !important; font-weight: 600 !important; font-family: inherit !important;
 }
