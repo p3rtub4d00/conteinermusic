@@ -11,7 +11,7 @@
   --neon-orange: #ff8800;
   --neon-glow: rgba(255, 136, 0, 0.6);
   --metal-dark: #121212;
-  --bg-solid: #050505; /* Preto Sólido (Sem textura) */
+  --bg-solid: #050505; 
   --text-white: #ffffff;
   --text-gray: #b0b0b0;
 }
@@ -24,7 +24,7 @@ body {
   padding-bottom: 90px;
 }
 
-/* --- CABEÇALHO GEOMÉTRICO (Igual à Imagem) --- */
+/* --- CABEÇALHO GEOMÉTRICO --- */
 .header-plate-wrapper {
   width: 100%;
   height: 160px;
@@ -40,15 +40,11 @@ body {
 .header-plate {
   width: 100%;
   height: 100%;
-  /* Gradiente suave preto/cinza */
   background: linear-gradient(180deg, #1f1f1f 0%, #0a0a0a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  
-  /* Recorte Industrial */
   clip-path: polygon(0 0, 100% 0, 100% 75%, 85% 100%, 15% 100%, 0 75%);
-  
   position: absolute;
   top: 0;
   box-shadow: inset 0 0 30px #000;
@@ -62,7 +58,6 @@ body {
   width: 100%;
   height: 100%;
   background: var(--neon-orange);
-  /* Borda brilhante acompanhando o recorte */
   clip-path: polygon(0 75%, 15% 100%, 85% 100%, 100% 75%, 100% 77%, 85% 102%, 15% 102%, 0 77%);
   z-index: 2;
   pointer-events: none;
@@ -100,7 +95,7 @@ header h1 {
   font-size: 0.95rem;
 }
 
-/* --- REAÇÕES (CORRIGIDO: BOTÕES CIRCULARES) --- */
+/* --- REAÇÕES --- */
 #reactions-area p {
   color: #fff;
   font-weight: 700;
@@ -117,8 +112,8 @@ header h1 {
 }
 
 .react-btn {
-  background: rgba(255, 255, 255, 0.05); /* Fundo sutil */
-  border: 1px solid #333; /* Borda para segurar o emoji */
+  background: rgba(255, 255, 255, 0.05); 
+  border: 1px solid #333; 
   border-radius: 50%;
   font-size: 1.8rem;
   cursor: pointer;
@@ -139,12 +134,12 @@ header h1 {
 }
 .react-btn:active { transform: scale(0.95); }
 
-/* --- PACOTES (NEON) --- */
+/* --- PACOTES --- */
 #package-selection {
   display: flex;
   justify-content: center;
   gap: 15px;
-  margin: 40px 0;
+  margin: 40px 0 25px 0; /* Ajustei margem inferior */
 }
 
 .package-option {
@@ -205,14 +200,62 @@ header h1 {
   color: #000;
 }
 
-/* --- BUSCA (PÍLULA) --- */
-#search-area {
+/* --- [NOVO ESTILO] TOCANDO AGORA (Mini Player) --- */
+#now-playing-area {
   background: #111;
-  border: 1px solid #333;
+  border: 1px solid var(--neon-orange); /* Borda laranja para destaque */
+  border-left: 5px solid var(--neon-orange); /* Barra lateral mais grossa */
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 25px;
+  box-shadow: 0 0 15px rgba(255, 136, 0, 0.15); /* Brilho sutil */
+  text-align: left; /* Alinhado a esquerda para parecer player */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efeito de "Equalizador" fake no fundo (opcional, sutil) */
+#now-playing-area::before {
+  content: '♫';
+  position: absolute;
+  right: -10px;
+  bottom: -20px;
+  font-size: 5rem;
+  color: rgba(255,255,255,0.03);
+  transform: rotate(-20deg);
+}
+
+#now-playing-area .label {
+  color: var(--neon-orange);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+  display: block;
+}
+
+#nowPlayingTitle {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+
+/* --- [NOVO ESTILO] BUSCA (Alto Contraste) --- */
+#search-area {
+  background: #fff; /* Fundo BRANCO para destacar */
+  border: 2px solid var(--neon-orange); /* Borda Laranja */
   border-radius: 50px;
   padding: 5px;
   display: flex;
-  box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+  box-shadow: 0 0 20px rgba(255, 136, 0, 0.2); /* Glow externo */
   margin-bottom: 25px;
 }
 
@@ -221,19 +264,24 @@ header h1 {
   background: transparent;
   border: none;
   padding: 12px 20px;
-  color: #fff;
+  color: #000; /* Texto PRETO para contraste */
   font-size: 1rem;
+  font-weight: 600;
   outline: none;
   font-family: inherit;
 }
 
+#searchInput::placeholder {
+  color: #666; /* Placeholder cinza escuro */
+}
+
 #searchBtn {
-  background: #222;
-  color: #fff;
+  background: var(--neon-orange); /* Botão Laranja */
+  color: #000; /* Texto Preto */
   border: none;
   border-radius: 40px;
   padding: 0 25px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s;
   text-transform: uppercase;
@@ -241,12 +289,12 @@ header h1 {
 }
 
 #searchBtn:hover {
-  background: var(--neon-orange);
-  color: #000;
-  box-shadow: 0 0 15px var(--neon-glow);
+  background: #ffaa33;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
 
-/* --- LISTA DE VÍDEOS (CORRIGIDO: BOTÕES VISÍVEIS) --- */
+
+/* --- LISTA DE VÍDEOS --- */
 #results {
   display: flex;
   flex-direction: column;
@@ -291,7 +339,6 @@ header h1 {
   line-height: 1.3;
 }
 
-/* AQUI ESTÁ A CORREÇÃO DO BOTÃO */
 .video-item .select-btn {
   align-self: flex-start;
   background: transparent;
@@ -303,7 +350,7 @@ header h1 {
   font-weight: 800;
   cursor: pointer;
   text-transform: uppercase;
-  display: inline-block !important; /* Forçar exibição */
+  display: inline-block !important; 
   margin-top: 5px;
 }
 
@@ -313,7 +360,6 @@ header h1 {
   box-shadow: 0 0 10px var(--neon-glow);
 }
 
-/* Item Selecionado */
 .video-item.selected-video {
   border-color: var(--neon-orange);
   background: rgba(255, 136, 0, 0.05);
@@ -361,12 +407,10 @@ header h1 {
     transition: transform 0.2s;
 }
 
-#pagarBtn:active:not(:disabled) {
-    transform: scale(0.98);
-}
+#pagarBtn:active:not(:disabled) { transform: scale(0.98); }
 #pagarBtn:disabled { background: #333; color: #666; box-shadow: none; cursor: not-allowed;}
 
-/* --- MENU INFERIOR (Fixo) --- */
+/* --- MENU INFERIOR --- */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -423,7 +467,7 @@ header h1 {
 }
 .input-dark-modal:focus { border-color: var(--neon-orange); }
 
-/* --- PIX & MODAL (Mantidos Dark) --- */
+/* --- PIX & MODAL --- */
 #pixArea { background: #fff; color: #000; padding: 25px; border-radius: 12px; margin-top: 20px; text-align: center;}
 #qrCode { display: block; margin: 0 auto 15px; max-width: 220px; }
 .copia-cola-wrapper textarea { width: 100%; background: #eee; border: 1px solid #ccc; padding: 10px; border-radius: 5px;}
