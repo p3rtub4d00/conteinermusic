@@ -1,10 +1,10 @@
 {
-  "name": "Admin Contêiner Music",
-  "short_name": "Admin Music",
-  "start_url": "/admin.html",
+  "name": "Contêiner Music Box",
+  "short_name": "Contêiner Music",
+  "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#1a1a1a",
-  "theme_color": "#e67e22",
+  "background_color": "#050505",
+  "theme_color": "#ff8800",
   "orientation": "portrait",
   "icons": [
     {
