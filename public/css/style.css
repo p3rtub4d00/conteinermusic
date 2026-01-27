@@ -10,10 +10,8 @@
 :root {
   --neon-orange: #ff8800;
   --neon-glow: rgba(255, 136, 0, 0.6);
-  --metal-dark: #121212;
   --bg-solid: #050505; 
   --text-white: #ffffff;
-  --text-gray: #b0b0b0;
 }
 
 body {
@@ -35,6 +33,7 @@ body {
   position: relative;
   border-top: 2px solid var(--neon-orange);
   box-shadow: 0 -10px 20px var(--neon-glow);
+  z-index: 5;
 }
 
 .header-plate {
@@ -77,6 +76,8 @@ body {
   margin: 0 auto;
   padding: 0 20px;
   text-align: center;
+  position: relative;
+  z-index: 10; /* Garante que o conteúdo fique acima de sombras */
 }
 
 /* --- TEXTOS --- */
@@ -139,7 +140,7 @@ header h1 {
   display: flex;
   justify-content: center;
   gap: 15px;
-  margin: 40px 0 25px 0; /* Ajustei margem inferior */
+  margin: 40px 0 25px 0;
 }
 
 .package-option {
@@ -200,33 +201,24 @@ header h1 {
   color: #000;
 }
 
-/* --- [NOVO ESTILO] TOCANDO AGORA (Mini Player) --- */
+/* --- [CORRIGIDO] TOCANDO AGORA --- */
 #now-playing-area {
   background: #111;
-  border: 1px solid var(--neon-orange); /* Borda laranja para destaque */
-  border-left: 5px solid var(--neon-orange); /* Barra lateral mais grossa */
+  border: 1px solid var(--neon-orange); 
+  border-left: 5px solid var(--neon-orange); 
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 25px;
-  box-shadow: 0 0 15px rgba(255, 136, 0, 0.15); /* Brilho sutil */
-  text-align: left; /* Alinhado a esquerda para parecer player */
-  display: flex;
+  box-shadow: 0 0 15px rgba(255, 136, 0, 0.2); 
+  text-align: left;
+  /* Removemos display: flex daqui para deixar o JS controlar */
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  z-index: 20; /* Garante que fique acima de tudo */
 }
 
-/* Efeito de "Equalizador" fake no fundo (opcional, sutil) */
-#now-playing-area::before {
-  content: '♫';
-  position: absolute;
-  right: -10px;
-  bottom: -20px;
-  font-size: 5rem;
-  color: rgba(255,255,255,0.03);
-  transform: rotate(-20deg);
-}
-
+/* Garante que o texto seja branco e visível */
 #now-playing-area .label {
   color: var(--neon-orange);
   font-size: 0.75rem;
@@ -238,24 +230,23 @@ header h1 {
 }
 
 #nowPlayingTitle {
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 600;
+  color: #ffffff !important; /* Força cor branca */
+  font-size: 1.1rem;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
 }
 
-
-/* --- [NOVO ESTILO] BUSCA (Alto Contraste) --- */
+/* --- BUSCA (BRANCA/CONTRASTE) --- */
 #search-area {
-  background: #fff; /* Fundo BRANCO para destacar */
-  border: 2px solid var(--neon-orange); /* Borda Laranja */
+  background: #fff; /* Fundo BRANCO */
+  border: 2px solid var(--neon-orange);
   border-radius: 50px;
   padding: 5px;
   display: flex;
-  box-shadow: 0 0 20px rgba(255, 136, 0, 0.2); /* Glow externo */
+  box-shadow: 0 0 20px rgba(255, 136, 0, 0.2);
   margin-bottom: 25px;
 }
 
@@ -264,20 +255,18 @@ header h1 {
   background: transparent;
   border: none;
   padding: 12px 20px;
-  color: #000; /* Texto PRETO para contraste */
+  color: #000; /* Texto PRETO */
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   outline: none;
   font-family: inherit;
 }
 
-#searchInput::placeholder {
-  color: #666; /* Placeholder cinza escuro */
-}
+#searchInput::placeholder { color: #555; }
 
 #searchBtn {
-  background: var(--neon-orange); /* Botão Laranja */
-  color: #000; /* Texto Preto */
+  background: var(--neon-orange);
+  color: #000;
   border: none;
   border-radius: 40px;
   padding: 0 25px;
@@ -292,7 +281,6 @@ header h1 {
   background: #ffaa33;
   box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
-
 
 /* --- LISTA DE VÍDEOS --- */
 #results {
