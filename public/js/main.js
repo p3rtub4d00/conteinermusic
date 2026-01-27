@@ -399,4 +399,35 @@ socket.on('paymentConfirmed', () => {
     }, 3000);
 });
 
+// --- Lógica de Instalação do PWA (Adicionado para o Cliente) ---
+let deferredPrompt;
+const installBtn = document.getElementById('installAppBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Previne que o navegador mostre o prompt automático
+  e.preventDefault();
+  // Guarda o evento para usar no clique do botão
+  deferredPrompt = e;
+  // Mostra o botão de instalação na tela
+  if (installBtn) installBtn.style.display = 'block';
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`Resposta do usuário para instalação: ${outcome}`);
+      deferredPrompt = null;
+      // Esconde o botão após a interação
+      installBtn.style.display = 'none';
+    }
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  console.log('O App foi instalado com sucesso!');
+  if (installBtn) installBtn.style.display = 'none';
+});
+
 document.addEventListener('DOMContentLoaded', updateSelectedPackage);
