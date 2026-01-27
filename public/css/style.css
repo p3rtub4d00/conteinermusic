@@ -14,21 +14,19 @@
   --metal-light: #252525;
   --text-white: #ffffff;
   --text-gray: #b0b0b0;
+  --bg-solid: #050505; /* Novo fundo sólido */
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #0e0e0e;
-  /* Textura de Metal Escovado SUAVE (Sem listras fortes) */
-  background-image: 
-    linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.8) 100%),
-    url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23222222' fill-opacity='0.4' fill-rule='evenodd'%3E%3Cpath d='M0 0h40v40H0V0zm20 20h20v20H20V20zM0 20h20v20H0V20zM20 0h20v20H20V0z'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: var(--bg-solid);
+  /* REMOVIDA A TEXTURA DE METAL ESCOVADO */
   color: var(--text-white);
   min-height: 100vh;
   padding-bottom: 90px;
 }
 
-/* --- CABEÇALHO GEOMÉTRICO (Igual à Imagem) --- */
+/* --- CABEÇALHO GEOMÉTRICO --- */
 .header-plate-wrapper {
   width: 100%;
   height: 180px;
@@ -37,7 +35,6 @@ body {
   justify-content: center;
   margin-bottom: 20px;
   position: relative;
-  /* Linha neon laranja no topo */
   border-top: 2px solid var(--neon-orange);
   box-shadow: 0 -10px 20px var(--neon-glow);
 }
@@ -45,20 +42,17 @@ body {
 .header-plate {
   width: 100%;
   height: 100%;
-  background: linear-gradient(180deg, #1f1f1f 0%, #0a0a0a 100%);
+  /* Gradiente sutil para dar profundidade à placa, mas sem textura */
+  background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  
-  /* O Recorte Angular da Imagem */
   clip-path: polygon(0 0, 100% 0, 100% 75%, 85% 100%, 15% 100%, 0 75%);
-  
   position: absolute;
   top: 0;
   box-shadow: inset 0 0 30px #000;
 }
 
-/* Borda laranja brilhante na parte de baixo do recorte */
 .header-plate-wrapper::after {
   content: '';
   position: absolute;
@@ -103,7 +97,7 @@ header h1 {
   font-size: 0.9rem;
 }
 
-/* --- REAÇÕES --- */
+/* --- REAÇÕES (PRENDENDO OS EMOJIS) --- */
 #reactions-area p {
   color: #fff;
   font-weight: 700;
@@ -119,19 +113,30 @@ header h1 {
   gap: 15px;
 }
 
+/* Estilo de botão circular para conter os emojis */
 .react-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
+  background: rgba(255, 255, 255, 0.08); /* Fundo sutil */
+  border: 1px solid #333; /* Borda sutil */
+  border-radius: 50%; /* Círculo perfeito */
+  font-size: 1.8rem;
   cursor: pointer;
-  transition: transform 0.2s;
-  padding: 5px;
-  /* Sem fundo, só o emoji flutuando */
-  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+  transition: all 0.2s ease;
+  padding: 10px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.react-btn:hover { transform: scale(1.2); }
 
-/* --- PACOTES (NEON GLOW) --- */
+.react-btn:hover {
+  transform: scale(1.1);
+  border-color: var(--neon-orange);
+  background: rgba(255, 255, 255, 0.15);
+}
+.react-btn:active { transform: scale(0.95); }
+
+/* --- PACOTES --- */
 #package-selection {
   display: flex;
   justify-content: center;
@@ -140,8 +145,7 @@ header h1 {
 }
 
 .package-option {
-  /* Fundo Escuro Vidrado */
-  background: linear-gradient(180deg, rgba(50,50,50,0.4) 0%, rgba(10,10,10,0.9) 100%);
+  background: linear-gradient(180deg, rgba(40,40,40,0.6) 0%, rgba(10,10,10,0.95) 100%);
   border: 1px solid #444;
   border-radius: 12px;
   padding: 25px 10px;
@@ -152,7 +156,6 @@ header h1 {
   box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
 
-/* Ícone no topo (Círculo) */
 .floating-icon {
   position: absolute;
   top: -20px;
@@ -190,7 +193,6 @@ header h1 {
   margin-top: 8px;
 }
 
-/* Selecionado */
 .package-option:has(input:checked) {
   border-color: var(--neon-orange);
   box-shadow: 0 0 15px var(--neon-glow), inset 0 0 20px rgba(0,0,0,0.8);
@@ -200,11 +202,11 @@ header h1 {
   color: #000;
 }
 
-/* --- BUSCA (PÍLULA) --- */
+/* --- BUSCA --- */
 #search-area {
   background: #1a1a1a;
   border: 1px solid #333;
-  border-radius: 50px; /* Formato Pílula */
+  border-radius: 50px;
   padding: 5px;
   display: flex;
   box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
@@ -219,10 +221,11 @@ header h1 {
   color: #fff;
   font-size: 1rem;
   outline: none;
+  font-family: inherit;
 }
 
 #searchBtn {
-  background: #333; /* Cinza desligado */
+  background: #333;
   color: #fff;
   border: none;
   border-radius: 40px;
@@ -240,7 +243,7 @@ header h1 {
   box-shadow: 0 0 10px var(--neon-glow);
 }
 
-/* --- LISTA DE VÍDEOS (CORRIGIDO: BOTÃO VISÍVEL) --- */
+/* --- LISTA DE VÍDEOS --- */
 #results {
   display: flex;
   flex-direction: column;
@@ -249,7 +252,7 @@ header h1 {
 }
 
 .video-item {
-  background: rgba(30,30,30,0.5);
+  background: rgba(30,30,30,0.6);
   border: 1px solid #333;
   border-radius: 10px;
   display: flex;
@@ -289,7 +292,6 @@ header h1 {
   margin-bottom: 8px;
 }
 
-/* BOTÃO DE SELECIONAR (Trouxe de volta!) */
 .video-item .select-btn {
   align-self: flex-start;
   background: transparent;
@@ -301,7 +303,7 @@ header h1 {
   font-weight: 700;
   cursor: pointer;
   text-transform: uppercase;
-  display: inline-block !important; /* Força aparecer */
+  display: inline-block !important;
 }
 
 .video-item .select-btn:hover {
@@ -309,7 +311,6 @@ header h1 {
   color: #000;
 }
 
-/* Item Selecionado */
 .video-item.selected-video {
   border-color: var(--neon-orange);
   background: rgba(255, 136, 0, 0.05);
@@ -355,7 +356,7 @@ header h1 {
 }
 #pagarBtn:disabled { background: #333; color: #666; box-shadow: none; }
 
-/* --- MENU INFERIOR --- */
+/* --- MENU INFERIOR (3 Ícones) --- */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -382,6 +383,6 @@ header h1 {
 .copia-cola-wrapper textarea { width: 100%; background: #eee; border: 1px solid #ccc; padding: 10px; }
 .btn-copy { background: #000; color: #fff; padding: 10px 20px; border-radius: 5px; margin-top: 10px; font-weight: bold; border:none;}
 .modal-overlay {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:999;}
-.modal-content {background:#111;border:2px solid var(--neon-orange);padding:25px;border-radius:15px;width:90%;max-width:350px;text-align:center;}
+.modal-content {background:#111;border:2px solid var(--neon-orange);padding:25px;border-radius:15px;width:90%;max-width:350px;text-align:center; color: #fff;}
 .btn-modal {width:100%;padding:15px;margin-top:10px;border-radius:8px;font-weight:bold;cursor:pointer;border:none;}
 .btn-modal-yes{background:var(--neon-orange);color:#000;} .btn-modal-no{background:transparent;border:2px solid #555;color:#aaa;}
