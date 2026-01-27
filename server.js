@@ -35,10 +35,11 @@ const InactivitySongSchema = new mongoose.Schema({
 });
 const InactivityModel = mongoose.model('InactivitySong', InactivitySongSchema);
 
-// 3. Pagamentos
+// 3. Pagamentos (ATUALIZADO COM TELEFONE)
 const PaymentSchema = new mongoose.Schema({
   mpPaymentId: { type: String, unique: true },
   socketId: String,
+  userPhone: String, // <--- CAMPO NOVO: Para salvar o histórico do cliente
   amount: Number,
   description: String,
   message: String,
@@ -140,7 +141,7 @@ async function fetchVideoIdByName(name) {
 // Controle do Player
 async function broadcastPlayerState() {
   try {
-    const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 }).lean(); // .lean() deixa a leitura mais rápida
+    const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 }).lean(); 
     
     const formattedQueue = queue.map(item => ({
         id: item.videoId,
@@ -208,7 +209,7 @@ async function startInactivityTimer() {
       const countCheck = await QueueModel.countDocuments();
       if (countCheck > 0) return; 
 
-      const inactivitySongs = await InactivityModel.find({}).lean(); // Otimização .lean()
+      const inactivitySongs = await InactivityModel.find({}).lean(); 
       if (inactivitySongs.length > 0) {
         console.log('[Server] Inatividade detectada. Carregando lista do banco.');
         
@@ -233,6 +234,42 @@ async function startInactivityTimer() {
 }
 
 // --- Rotas HTTP ---
+
+// [NOVA ROTA] Busca histórico de pedidos pelo telefone
+app.get("/user-history", async (req, res) => {
+    try {
+        const phone = req.query.phone;
+        if (!phone) return res.json({ ok: true, history: [] });
+
+        // Busca pagamentos APROVADOS deste telefone
+        const payments = await PaymentModel.find({ 
+            userPhone: phone, 
+            status: 'approved' 
+        }).sort({ createdAt: -1 }).limit(30); // Limite de segurança para não travar
+
+        // Filtra para pegar apenas videos únicos (sem repetição)
+        const uniqueVideos = new Map();
+        payments.forEach(p => {
+            if(p.videos) {
+                p.videos.forEach(v => {
+                    if(!uniqueVideos.has(v.id)) {
+                        uniqueVideos.set(v.id, {
+                            id: v.id,
+                            title: v.title,
+                            thumbnail: v.thumbnail
+                        });
+                    }
+                });
+            }
+        });
+
+        res.json({ ok: true, history: Array.from(uniqueVideos.values()) });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ ok: false, error: 'Erro ao buscar histórico' });
+    }
+});
+
 
 app.get("/search", async (req, res) => {
   try {
@@ -270,7 +307,8 @@ app.get("/search", async (req, res) => {
 
 app.post("/create-payment", async (req, res) => {
   try {
-    const { videos, amount, description, message, socketId } = req.body;
+    // Adicionado userPhone na leitura dos dados
+    const { videos, amount, description, message, socketId, userPhone } = req.body;
     if (!videos || !amount || !socketId) return res.status(400).json({ ok: false, error: "Dados inválidos." });
 
     const notification_url = "https://conteinermusic.onrender.com/webhook"; 
@@ -293,6 +331,7 @@ app.post("/create-payment", async (req, res) => {
     await PaymentModel.create({
       mpPaymentId: result.id.toString(), 
       socketId: socketId,
+      userPhone: userPhone, // Salvando o telefone no banco
       amount: Number(amount),
       description: description,
       message: message,
@@ -385,9 +424,6 @@ app.post("/webhook", async (req, res) => {
 io.on("connection", async (socket) => {
   console.log("[Socket] Conectado:", socket.id);
   
-  // Otimização: Carrega dados iniciais mais rápido
-  // Mas cuidado: socket.emit aqui pode ser prematuro se o cliente não montou os listeners.
-  // O cliente (main.js/player.js) pede dados via eventos, então aqui mandamos só o básico.
   
   socket.on('player:ready', async () => {
     // Busca em paralelo para ser mais rápido
@@ -429,7 +465,6 @@ io.on("connection", async (socket) => {
     console.log(`[Admin] Carregando dados OTIMIZADOS para: ${socket.id}`);
     
     try {
-        // 🔥 AQUI ESTÁ A MÁGICA: Promise.all
         // Busca Configuração, Lista de Inatividade e Fila AO MESMO TEMPO
         const [freshConfig, inactivityList, queue] = await Promise.all([
             getConfig(),
@@ -464,9 +499,6 @@ io.on("connection", async (socket) => {
     const names = Array.isArray(nameArray) ? nameArray : [];
 
     try {
-        // Processa nomes em paralelo (busca IDs no YouTube)
-        // Cuidado com rate limit do YouTube, então limitamos a concorrência se for muitos itens
-        // Mas para listas pequenas, loop sequencial é seguro para não tomar bloqueio.
         for (const name of names) {
             if(name.trim().length > 0) {
                 const id = await fetchVideoIdByName(name);
