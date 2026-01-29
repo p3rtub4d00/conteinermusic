@@ -1,4 +1,4 @@
-const CACHE_NAME = 'admin-conteiner-v1';
+const CACHE_NAME = 'admin-conteiner-v2';
 const urlsToCache = [
   '/admin.html',
   '/css/admin.css',
