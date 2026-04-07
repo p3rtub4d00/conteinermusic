@@ -57,31 +57,41 @@
             </div>
         </div>
 
-        <div id="package-selection">
-            <div class="package-option">
-                <div class="floating-icon">🍻</div>
-                <label>
-                  <input type="radio" name="package" value="3" data-price="2.00" data-limit="3" checked>
-                  <span>PACOTE 3<br>MÚSICAS</span>
-                  <small>(R$ 2,00)</small>
-                </label>
-            </div>
-            <div class="package-option">
-                <div class="floating-icon">💃</div>
-                <label>
-                  <input type="radio" name="package" value="5" data-price="3.00" data-limit="5">
-                  <span>PACOTE 5<br>MÚSICAS</span>
-                  <small>(R$ 3,00)</small>
-                </label>
-            </div>
+        <div id="wizard-progress" class="dark-panel" style="margin-bottom:15px;">
+          <div class="wizard-steps">
+            <span class="wizard-step active" data-step="1">1. Pacote</span>
+            <span class="wizard-step" data-step="2">2. Músicas</span>
+            <span class="wizard-step" data-step="3">3. Revisão</span>
+            <span class="wizard-step" data-step="4">4. Pagamento</span>
+            <span class="wizard-step" data-step="5">5. Acompanhamento</span>
+          </div>
         </div>
 
-        <div id="now-playing-area" style="display: none;">
-          <span class="label">Tocando:</span>
-          <span id="nowPlayingTitle">...</span>
+        <div id="step-1" class="wizard-screen">
+          <div id="package-selection">
+              <div class="package-option">
+                  <div class="floating-icon">🍻</div>
+                  <label>
+                    <input type="radio" name="package" value="3" data-price="2.00" data-limit="3" checked>
+                    <span>PACOTE 3<br>MÚSICAS</span>
+                    <small>(R$ 2,00)</small>
+                  </label>
+              </div>
+              <div class="package-option">
+                  <div class="floating-icon">💃</div>
+                  <label>
+                    <input type="radio" name="package" value="5" data-price="3.00" data-limit="5">
+                    <span>PACOTE 5<br>MÚSICAS</span>
+                    <small>(R$ 3,00)</small>
+                  </label>
+              </div>
+          </div>
+          <div id="action-buttons">
+            <button id="toStep2Btn" class="btn-primary">CONTINUAR</button>
+          </div>
         </div>
 
-        <main>
+        <div id="step-2" class="wizard-screen" style="display:none;">
           <div id="search-area">
             <input type="text" id="searchInput" placeholder="Digite o nome do artista ou música...">
             <button id="searchBtn">BUSCAR</button>
@@ -95,9 +105,41 @@
           </div>
 
           <div id="action-buttons">
+            <button id="backToStep1Btn" class="btn-secondary">VOLTAR</button>
+            <button id="toStep3Btn" class="btn-primary" disabled>REVISAR PEDIDO</button>
+          </div>
+        </div>
+
+        <div id="step-3" class="wizard-screen" style="display:none;">
+          <div class="dark-panel" style="text-align:left; margin-bottom:15px;">
+            <h2 style="margin-bottom:8px;">Revisão do Pedido</h2>
+            <p id="reviewPackageText"></p>
+            <p id="reviewPriceText"></p>
+            <p id="reviewCountText"></p>
+          </div>
+
+          <div id="review-selection-area">
+            <h2>Músicas escolhidas</h2>
+            <ul id="reviewSelected"></ul>
+          </div>
+
+          <div id="action-buttons">
+            <button id="backToStep2Btn" class="btn-secondary">EDITAR MÚSICAS</button>
+            <button id="toStep4Btn" class="btn-primary">IR PARA PAGAMENTO</button>
+          </div>
+        </div>
+
+        <div id="step-4" class="wizard-screen" style="display:none;">
+          <div id="now-playing-area" style="display: none;">
+            <span class="label">Tocando:</span>
+            <span id="nowPlayingTitle">...</span>
+          </div>
+
+          <div id="action-buttons">
+            <button id="backToStep3Btn" class="btn-secondary">VOLTAR</button>
             <button id="pagarBtn" class="btn-primary" disabled>PAGAR R$ 2,00 (PIX)</button>
           </div>
-          
+
           <div id="pixArea" style="display:none;">
             <h2 id="pixTitle">Faça o PIX</h2>
             <img id="qrCode" alt="QR Code PIX" style="display: block;">
@@ -108,7 +150,31 @@
             </div>
             <p id="paymentStatusMsg" style="display: none;"></p>
           </div>
-        </main>
+        </div>
+
+        <div id="step-5" class="wizard-screen" style="display:none;">
+          <div class="dark-panel" style="text-align:left; margin-bottom:15px;">
+            <h2 style="margin-bottom:8px;">Acompanhamento</h2>
+            <p id="orderStatusText">Aguardando pagamento...</p>
+            <p>Assim que o pagamento for aprovado, seu pedido entra na fila.</p>
+          </div>
+          <div id="action-buttons">
+            <button id="newOrderBtn" class="btn-primary">FAZER NOVO PEDIDO</button>
+          </div>
+        </div>
+
+        <!-- Legacy blocks mantidos apenas para compatibilidade visual -->
+        <div style="display:none;">
+          <div id="package-selection-legacy">
+            <div class="package-option">
+              <div class="floating-icon">🍻</div>
+              <label>
+                <input type="radio" name="package_legacy" value="3">
+                <span>PACOTE 3<br>MÚSICAS</span>
+              </label>
+            </div>
+          </div>
+        </div>
     </div>
   </div>
 
