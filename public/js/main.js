@@ -70,6 +70,8 @@ let finalDescription = "";
 let finalMessage = null;
 let currentUserPhone = localStorage.getItem('userPhone');
 let currentStep = 1;
+let currentPaymentId = null;
+let paymentPollingInterval = null;
 
 // --- Toastify Helper ---
 function showToast(message, type = 'info') {
@@ -122,6 +124,11 @@ function resetUI() {
   // 6. Garante que botão de pagar resete
   if(pagarBtn) pagarBtn.disabled = true;
   if (orderStatusText) orderStatusText.textContent = 'Aguardando pagamento...';
+  if (paymentPollingInterval) {
+      clearInterval(paymentPollingInterval);
+      paymentPollingInterval = null;
+  }
+  currentPaymentId = null;
   goToStep(1);
 }
 
@@ -348,16 +355,57 @@ async function proceedToPayment() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
+      currentPaymentId = data.paymentId || null;
       if (pixArea) pixArea.style.display = 'block';
       if(qrCodeImg) qrCodeImg.src = `data:image/png;base64,${data.qr}`;
       if(copiaColaText) copiaColaText.value = data.copiaCola;
       selectedVideos = [];
       atualizarLista();
+      startPaymentStatusPolling();
       showToast("Pagamento gerado! Aguardando PIX...", 'success');
   } catch (error) {
        showToast(`Erro: ${error.message}`, 'error');
        updatePaymentButtonText();
   }
+}
+
+function handlePaymentConfirmedUI() {
+    if (paymentPollingInterval) {
+        clearInterval(paymentPollingInterval);
+        paymentPollingInterval = null;
+    }
+    if(qrCodeImg) qrCodeImg.style.display = 'none';
+    if(copiaColaWrapper) copiaColaWrapper.style.display = 'none';
+    if(pixTitle) pixTitle.textContent = "PAGAMENTO APROVADO!";
+    if (paymentStatusMsg) {
+        paymentStatusMsg.textContent = "Suas músicas estão na fila!";
+        paymentStatusMsg.style.display = 'block';
+        paymentStatusMsg.style.color = '#27ae60';
+    }
+    if (orderStatusText) {
+        orderStatusText.textContent = "✅ Pagamento aprovado! Seu pedido entrou na fila.";
+    }
+    showToast("Pagamento Confirmado!", 'success');
+    goToStep(5);
+
+    setTimeout(() => {
+        resetUI();
+    }, 3000);
+}
+
+function startPaymentStatusPolling() {
+    if (!currentPaymentId) return;
+    if (paymentPollingInterval) clearInterval(paymentPollingInterval);
+
+    paymentPollingInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`/payment-status/${encodeURIComponent(currentPaymentId)}`, { cache: 'no-store' });
+            const data = await res.json();
+            if (data?.ok && data.status === 'approved') {
+                handlePaymentConfirmedUI();
+            }
+        } catch (e) {}
+    }, 3000);
 }
 
 // Listeners
@@ -429,30 +477,7 @@ socket.on('updatePlayerState', (state) => {
 });
 
 // --- CONFIRMAÇÃO DE PAGAMENTO E RESET ---
-socket.on('paymentConfirmed', () => {
-    // Esconde os elementos do PIX
-    if(qrCodeImg) qrCodeImg.style.display = 'none';
-    if(copiaColaWrapper) copiaColaWrapper.style.display = 'none';
-    
-    // Mostra mensagem de sucesso
-    if(pixTitle) pixTitle.textContent = "PAGAMENTO APROVADO!";
-    if (paymentStatusMsg) {
-        paymentStatusMsg.textContent = "Suas músicas estão na fila!";
-        paymentStatusMsg.style.display = 'block';
-        paymentStatusMsg.style.color = '#27ae60'; // Verde
-    }
-    if (orderStatusText) {
-        orderStatusText.textContent = "✅ Pagamento aprovado! Seu pedido entrou na fila.";
-    }
-    
-    showToast("Pagamento Confirmado!", 'success');
-    goToStep(5);
-    
-    // Aguarda 3 segundos e reseta a tela
-    setTimeout(() => {
-        resetUI();
-    }, 3000);
-});
+socket.on('paymentConfirmed', handlePaymentConfirmedUI);
 
 // --- Lógica de Instalação do PWA (Adicionado para o Cliente) ---
 let deferredPrompt;
