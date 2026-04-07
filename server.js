@@ -68,10 +68,24 @@ const QueueSchema = new mongoose.Schema({
   title: String,
   isCustomer: { type: Boolean, default: false },
   message: String,
+  userPhone: String,
+  mpPaymentId: String,
   priority: { type: Number, default: 1 }, // 1 = Cliente/Admin, 0 = Inatividade
   createdAt: { type: Date, default: Date.now }
 });
 const QueueModel = mongoose.model('Queue', QueueSchema);
+
+// 6. Histórico de músicas tocadas
+const PlayHistorySchema = new mongoose.Schema({
+  videoId: String,
+  title: String,
+  message: String,
+  source: { type: String, enum: ['customer', 'admin', 'inactivity'], default: 'customer' },
+  userPhone: String,
+  mpPaymentId: String,
+  playedAt: { type: Date, default: Date.now }
+});
+const PlayHistoryModel = mongoose.model('PlayHistory', PlayHistorySchema);
 
 
 // --- Inicialização do Servidor ---
@@ -168,6 +182,19 @@ async function playNextInQueue() {
       const nextVideo = await QueueModel.findOneAndDelete({}, { sort: { priority: -1, createdAt: 1 } });
 
       if (nextVideo) {
+        const source = nextVideo.isCustomer
+          ? 'customer'
+          : (nextVideo.priority === 0 ? 'inactivity' : 'admin');
+
+        await PlayHistoryModel.create({
+          videoId: nextVideo.videoId,
+          title: nextVideo.title,
+          message: nextVideo.message || null,
+          source,
+          userPhone: nextVideo.userPhone || null,
+          mpPaymentId: nextVideo.mpPaymentId || null
+        });
+
         nowPlayingInfo = {
             id: nextVideo.videoId,
             title: nextVideo.title,
@@ -389,6 +416,8 @@ app.post("/webhook", async (req, res) => {
           title: v.title, 
           isCustomer: true, 
           message: dbPayment.message,
+          userPhone: dbPayment.userPhone || null,
+          mpPaymentId: dbPayment.mpPaymentId || null,
           priority: 1 
         }));
 
@@ -466,10 +495,11 @@ io.on("connection", async (socket) => {
     
     try {
         // Busca Configuração, Lista de Inatividade e Fila AO MESMO TEMPO
-        const [freshConfig, inactivityList, queue] = await Promise.all([
+        const [freshConfig, inactivityList, queue, playHistory] = await Promise.all([
             getConfig(),
             InactivityModel.find({}).select('title').lean(), // Traz só o título, muito mais leve
-            QueueModel.find({}).sort({ priority: -1, createdAt: 1 }).lean()
+            QueueModel.find({}).sort({ priority: -1, createdAt: 1 }).lean(),
+            PlayHistoryModel.find({}).sort({ playedAt: -1 }).limit(100).lean()
         ]);
 
         const names = inactivityList.map(item => item.title);
@@ -479,6 +509,7 @@ io.on("connection", async (socket) => {
         socket.emit('admin:updateRevenue', freshConfig.dailyRevenue);
         socket.emit('admin:updateVolume', { volume: freshConfig.currentVolume, isMuted: freshConfig.isMuted });
         socket.emit('admin:loadPromoText', freshConfig.currentPromoText);
+        socket.emit('admin:playHistory', playHistory);
 
         const formattedQueue = queue.map(item => ({ 
             id: item.videoId, 
@@ -490,6 +521,16 @@ io.on("connection", async (socket) => {
 
     } catch(e) {
         console.error('[Admin] Erro ao carregar dados:', e);
+    }
+  });
+
+  socket.on('admin:getPlayHistory', async () => {
+    try {
+      const playHistory = await PlayHistoryModel.find({}).sort({ playedAt: -1 }).limit(100).lean();
+      socket.emit('admin:playHistory', playHistory);
+    } catch (e) {
+      console.error('[Admin] Erro ao carregar histórico de reprodução:', e);
+      socket.emit('admin:playHistory', []);
     }
   });
 
