@@ -17,6 +17,8 @@ const volumeValueSpan = document.getElementById('volumeValue');
 const adminNowPlayingSpan = document.getElementById('adminNowPlaying');
 const adminNowPlayingMessageSpan = document.getElementById('adminNowPlayingMessage'); 
 const adminQueueList = document.getElementById('adminQueueList');
+const adminPlayHistoryList = document.getElementById('adminPlayHistory');
+const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
 
@@ -142,6 +144,13 @@ if (savePromoBtn) {
     });
 }
 
+if (refreshHistoryBtn) {
+    refreshHistoryBtn.addEventListener('click', () => {
+        socket.emit('admin:getPlayHistory');
+        showToast('Atualizando histórico...', 'info');
+    });
+}
+
 // -----------------
 // Eventos de Entrada
 // -----------------
@@ -231,6 +240,24 @@ socket.on('updatePlayerState', (state) => {
 
 socket.on('admin:loadPromoText', (text) => {
   if (promoTextInput) promoTextInput.value = text;
+});
+
+socket.on('admin:playHistory', (history) => {
+  if (!adminPlayHistoryList) return;
+  if (!history || history.length === 0) {
+    adminPlayHistoryList.innerHTML = '<li>(Nenhuma música registrada ainda)</li>';
+    return;
+  }
+
+  adminPlayHistoryList.innerHTML = history.map(item => {
+    const playedAt = new Date(item.playedAt).toLocaleString('pt-BR');
+    const sourceLabel = item.source === 'customer'
+      ? 'Cliente'
+      : (item.source === 'admin' ? 'Admin' : 'Inatividade');
+    const phoneInfo = item.userPhone ? ` | Tel: ${item.userPhone}` : '';
+    const messageInfo = item.message ? ` | Msg: "${item.message}"` : '';
+    return `<li><strong>${item.title || 'Sem título'}</strong><br><small>${playedAt} | Origem: ${sourceLabel}${phoneInfo}${messageInfo}</small></li>`;
+  }).join('');
 });
 
 // --------------------------------------------------------------------------
