@@ -112,6 +112,11 @@ app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
 
+// Healthcheck simples para manter instância ativa via chamadas periódicas
+app.get('/health', (req, res) => {
+  res.status(200).json({ ok: true, ts: new Date().toISOString() });
+});
+
 // Configuração do Mercado Pago
 const mpClient = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN
@@ -369,12 +374,27 @@ app.post("/create-payment", async (req, res) => {
 
     res.json({
       ok: true,
+      paymentId: result.id.toString(),
       qr: result.point_of_interaction.transaction_data.qr_code_base64,
       copiaCola: result.point_of_interaction.transaction_data.qr_code
     });
   } catch (err) {
     console.error("[Server] Erro Create-Payment:", err.message);
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/payment-status/:paymentId', async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    if (!paymentId) return res.status(400).json({ ok: false, error: 'paymentId obrigatório' });
+
+    const payment = await PaymentModel.findOne({ mpPaymentId: paymentId.toString() }).select('status').lean();
+    if (!payment) return res.status(404).json({ ok: false, error: 'Pagamento não encontrado' });
+
+    res.json({ ok: true, status: payment.status });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: 'Erro ao consultar pagamento' });
   }
 });
 
@@ -482,7 +502,10 @@ io.on("connection", async (socket) => {
   });
 
   socket.on('player:videoEnded', () => playNextInQueue());
-  socket.on('player:ping', () => console.log(`[Ping] Keep-alive: ${socket.id}`));
+  socket.on('player:ping', () => {
+    console.log(`[Ping] Keep-alive: ${socket.id}`);
+    socket.emit('player:pong', { ts: Date.now() });
+  });
 
   // Evento de Reação
   socket.on('reaction', (emoji) => {
