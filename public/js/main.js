@@ -18,6 +18,20 @@ const nowPlayingArea = document.getElementById('now-playing-area');
 const nowPlayingTitleSpan = document.getElementById('nowPlayingTitle');
 const packageRadios = document.querySelectorAll('input[name="package"]');
 const limitSpan = document.getElementById('limit');
+const wizardScreens = document.querySelectorAll('.wizard-screen');
+const wizardStepBadges = document.querySelectorAll('.wizard-step');
+const toStep2Btn = document.getElementById('toStep2Btn');
+const toStep3Btn = document.getElementById('toStep3Btn');
+const toStep4Btn = document.getElementById('toStep4Btn');
+const backToStep1Btn = document.getElementById('backToStep1Btn');
+const backToStep2Btn = document.getElementById('backToStep2Btn');
+const backToStep3Btn = document.getElementById('backToStep3Btn');
+const newOrderBtn = document.getElementById('newOrderBtn');
+const reviewSelected = document.getElementById('reviewSelected');
+const reviewPackageText = document.getElementById('reviewPackageText');
+const reviewPriceText = document.getElementById('reviewPriceText');
+const reviewCountText = document.getElementById('reviewCountText');
+const orderStatusText = document.getElementById('orderStatusText');
 
 // Modal Mensagem
 const messageModal = document.getElementById('messageModal');
@@ -55,6 +69,7 @@ let finalAmount = 0;
 let finalDescription = "";
 let finalMessage = null;
 let currentUserPhone = localStorage.getItem('userPhone');
+let currentStep = 1;
 
 // --- Toastify Helper ---
 function showToast(message, type = 'info') {
@@ -106,6 +121,30 @@ function resetUI() {
 
   // 6. Garante que botão de pagar resete
   if(pagarBtn) pagarBtn.disabled = true;
+  if (orderStatusText) orderStatusText.textContent = 'Aguardando pagamento...';
+  goToStep(1);
+}
+
+function goToStep(step) {
+  currentStep = step;
+  wizardScreens.forEach((screen, index) => {
+    screen.style.display = (index + 1 === step) ? 'block' : 'none';
+  });
+  wizardStepBadges.forEach((badge) => {
+    const badgeStep = parseInt(badge.dataset.step, 10);
+    badge.classList.toggle('active', badgeStep === step);
+  });
+}
+
+function updateReviewStep() {
+  if (reviewPackageText) reviewPackageText.textContent = `Pacote: ${selectedPackage.description}`;
+  if (reviewPriceText) reviewPriceText.textContent = `Total: R$ ${selectedPackage.price.toFixed(2).replace('.', ',')}`;
+  if (reviewCountText) reviewCountText.textContent = `Quantidade: ${selectedVideos.length}/${selectedPackage.limit}`;
+  if (reviewSelected) {
+    reviewSelected.innerHTML = selectedVideos
+      .map(v => `<li><span>${v.title}</span> <button onclick="removerVideo('${v.id}')">❌</button></li>`)
+      .join('');
+  }
 }
 
 
@@ -278,6 +317,7 @@ function atualizarLista() {
   }
   if (countSpan) countSpan.textContent = selectedVideos.length;
   updatePaymentButtonText();
+  if (toStep3Btn) toStep3Btn.disabled = selectedVideos.length !== selectedPackage.limit;
 }
 
 window.removerVideo = id => {
@@ -323,6 +363,17 @@ async function proceedToPayment() {
 // Listeners
 if (searchBtn) searchBtn.addEventListener('click', buscarVideos);
 if (packageRadios) packageRadios.forEach(radio => radio.addEventListener('change', updateSelectedPackage));
+if (toStep2Btn) toStep2Btn.addEventListener('click', () => goToStep(2));
+if (backToStep1Btn) backToStep1Btn.addEventListener('click', () => goToStep(1));
+if (toStep3Btn) toStep3Btn.addEventListener('click', () => {
+  if (selectedVideos.length !== selectedPackage.limit) return;
+  updateReviewStep();
+  goToStep(3);
+});
+if (backToStep2Btn) backToStep2Btn.addEventListener('click', () => goToStep(2));
+if (toStep4Btn) toStep4Btn.addEventListener('click', () => goToStep(4));
+if (backToStep3Btn) backToStep3Btn.addEventListener('click', () => goToStep(3));
+if (newOrderBtn) newOrderBtn.addEventListener('click', resetUI);
 if (pagarBtn) {
     pagarBtn.addEventListener('click', () => {
       if (selectedVideos.length !== selectedPackage.limit) return;
@@ -390,8 +441,12 @@ socket.on('paymentConfirmed', () => {
         paymentStatusMsg.style.display = 'block';
         paymentStatusMsg.style.color = '#27ae60'; // Verde
     }
+    if (orderStatusText) {
+        orderStatusText.textContent = "✅ Pagamento aprovado! Seu pedido entrou na fila.";
+    }
     
     showToast("Pagamento Confirmado!", 'success');
+    goToStep(5);
     
     // Aguarda 3 segundos e reseta a tela
     setTimeout(() => {
@@ -430,4 +485,7 @@ window.addEventListener('appinstalled', () => {
   if (installBtn) installBtn.style.display = 'none';
 });
 
-document.addEventListener('DOMContentLoaded', updateSelectedPackage);
+document.addEventListener('DOMContentLoaded', () => {
+  updateSelectedPackage();
+  goToStep(1);
+});
