@@ -145,7 +145,7 @@ function onPlayerStateChange(event) {
     if (!currentVideoTimer) {
       currentVideoTimer = setTimeout(() => {
         socket.emit('player:videoEnded');
-      }, MAX_PLAYBACK_TIME);
+      }, maxPlaybackTimeMs);
     }
   }
   else if (event.data === YT.PlayerState.ENDED) {

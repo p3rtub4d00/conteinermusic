@@ -139,7 +139,13 @@ async function getConfig() {
     return config;
   } catch (error) {
     console.error('[DB] Erro ao ler Config:', error);
-    return { dailyRevenue: 0.0, currentPromoText: "Erro ao carregar", currentVolume: 50, isMuted: true };
+    return {
+      dailyRevenue: 0.0,
+      currentPromoText: "Erro ao carregar",
+      currentVolume: 50,
+      isMuted: true,
+      maxPlaybackMinutes: 5
+    };
   }
 }
 
