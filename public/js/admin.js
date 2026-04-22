@@ -14,6 +14,8 @@ const pauseBtn = document.getElementById('pauseBtn');
 const skipBtn = document.getElementById('skipBtn');
 const volumeSlider = document.getElementById('volumeSlider');
 const volumeValueSpan = document.getElementById('volumeValue');
+const maxPlaybackMinutesInput = document.getElementById('maxPlaybackMinutesInput');
+const saveMaxPlaybackBtn = document.getElementById('saveMaxPlaybackBtn');
 const adminNowPlayingSpan = document.getElementById('adminNowPlaying');
 const adminNowPlayingMessageSpan = document.getElementById('adminNowPlayingMessage'); 
 const adminQueueList = document.getElementById('adminQueueList');
@@ -134,6 +136,18 @@ if (volumeSlider) {
     });
 }
 
+if (saveMaxPlaybackBtn) {
+    saveMaxPlaybackBtn.addEventListener('click', () => {
+        const minutes = Number(maxPlaybackMinutesInput?.value);
+        if (!Number.isFinite(minutes) || minutes < 1 || minutes > 30) {
+            showToast('Informe um tempo entre 1 e 30 minutos.', 'error');
+            return;
+        }
+        socket.emit('admin:setMaxPlaybackMinutes', { minutes: Math.round(minutes) });
+        showToast('Tempo máximo por música atualizado!', 'success');
+    });
+}
+
 // 5. Salvar Texto Promo
 if (savePromoBtn) {
     savePromoBtn.addEventListener('click', () => {
@@ -205,6 +219,12 @@ socket.on('admin:inactivitySearchResults', (results) => {
 socket.on('admin:updateVolume', (data) => {
   if (volumeSlider) volumeSlider.value = data.volume;
   if (volumeValueSpan) volumeValueSpan.textContent = `${data.volume}%`;
+});
+
+socket.on('admin:updateMaxPlaybackMinutes', (minutes) => {
+  if (maxPlaybackMinutesInput) {
+    maxPlaybackMinutesInput.value = ``;
+  }
 });
 
 socket.on('updatePlayerState', (state) => {

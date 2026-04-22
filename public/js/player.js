@@ -3,7 +3,7 @@ let player;
 let isPlayerReady = false;
 
 let currentVideoTimer = null;
-const MAX_PLAYBACK_TIME = 5 * 60 * 1000; // 5 minutos
+let maxPlaybackTimeMs = 5 * 60 * 1000; // 5 minutos (padrão)
 
 let pendingVideo = null;
 
@@ -224,6 +224,12 @@ socket.on('player:setInitialState', (data) => {
   if (!isPlayerReady) return;
   player.setVolume(data.volume);
   if (data.isMuted) player.mute(); else player.unMute();
+  if (data.maxPlaybackMinutes) {
+    const minutes = Number(data.maxPlaybackMinutes);
+    if (Number.isFinite(minutes) && minutes > 0) {
+      maxPlaybackTimeMs = minutes * 60 * 1000;
+    }
+  }
 });
 socket.on('player:pause', () => {
   if (!isPlayerReady) return;
@@ -235,6 +241,13 @@ socket.on('player:setVolume', (data) => {
   if (!isPlayerReady) return;
   player.setVolume(data.volume);
   if (data.isMuted) player.mute(); else player.unMute();
+});
+
+socket.on('player:setMaxPlaybackTime', (data) => {
+  const minutes = Number(data?.minutes);
+  if (Number.isFinite(minutes) && minutes > 0) {
+    maxPlaybackTimeMs = minutes * 60 * 1000;
+  }
 });
 
 function playVideo({ videoId, title, message }) {

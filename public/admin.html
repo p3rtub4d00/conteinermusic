@@ -41,6 +41,12 @@
               <input type="range" id="volumeSlider" min="0" max="100" value="50">
               <span id="volumeValue">50%</span>
             </div>
+            <div class="volume-control" style="margin-top: 10px;">
+              <label for="maxPlaybackMinutesInput">Tempo máximo por música:</label>
+              <input type="number" id="maxPlaybackMinutesInput" min="1" max="30" value="5" style="width: 70px;">
+              <span>min</span>
+              <button id="saveMaxPlaybackBtn" class="control-btn" type="button">Salvar Tempo</button>
+            </div>
           </section>
 
           <section class="card" id="queue-card">
