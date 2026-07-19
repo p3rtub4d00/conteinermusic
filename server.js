@@ -565,15 +565,15 @@ io.on("connection", async (socket) => {
         // Busca Configuração, Lista de Inatividade e Fila AO MESMO TEMPO
         const [freshConfig, inactivityList, queue, playHistory] = await Promise.all([
             getConfig(),
-            InactivityModel.find({}).select('title').lean(), // Traz só o título, muito mais leve
+            InactivityModel.find({}).select('title videoId').lean(),
             QueueModel.find({}).sort({ priority: -1, createdAt: 1 }).lean(),
             PlayHistoryModel.find({}).sort({ playedAt: -1 }).limit(100).lean()
         ]);
 
-        const names = inactivityList.map(item => item.title);
+        const inactivityItems = inactivityList.map(item => ({ title: item.title, videoId: item.videoId }));
         
         // Envia tudo de uma vez
-        socket.emit('admin:loadInactivityList', names);
+        socket.emit('admin:loadInactivityList', inactivityItems);
         socket.emit('admin:updateRevenue', freshConfig.dailyRevenue);
         socket.emit('admin:updateVolume', { volume: freshConfig.currentVolume, isMuted: freshConfig.isMuted });
         socket.emit('admin:loadPromoText', freshConfig.currentPromoText);
@@ -602,31 +602,37 @@ io.on("connection", async (socket) => {
     }
   });
 
-  socket.on('admin:saveInactivityList', async (nameArray) => {
+  socket.on('admin:saveInactivityList', async (itemArray, callback) => {
     console.log('[Admin] Salvando lista...');
     const newItems = [];
-    const names = Array.isArray(nameArray) ? nameArray : [];
+    const failedTitles = [];
+    const items = Array.isArray(itemArray) ? itemArray : [];
 
     try {
-        for (const name of names) {
-            if(name.trim().length > 0) {
-                const id = await fetchVideoIdByName(name);
+        for (const item of items) {
+            const name = typeof item === 'string' ? item.trim() : String(item?.title || '').trim();
+            if (name.length > 0) {
+                const id = typeof item === 'object' && item.videoId ? item.videoId : await fetchVideoIdByName(name);
                 if (id) {
-                    newItems.push({ title: name, videoId: id });
+                  newItems.push({ title: name, videoId: id });
+                } else {
+                  failedTitles.push(name);
                 }
             }
         }
 
+        await InactivityModel.deleteMany({});
         if (newItems.length > 0) {
-            await InactivityModel.deleteMany({}); 
             await InactivityModel.insertMany(newItems); 
-            console.log(`[Admin] Lista salva: ${newItems.length} itens.`);
         }
+        console.log(`[Admin] Lista salva: ${newItems.length} itens.`);
 
         if (!isCustomerPlaying && !nowPlayingInfo) startInactivityTimer();
+        if (typeof callback === 'function') callback({ ok: true, saved: newItems.length, failedTitles });
 
     } catch (err) {
         console.error('[Admin] Erro ao salvar lista:', err);
+        if (typeof callback === 'function') callback({ ok: false, error: 'Não foi possível salvar a lista.' });
     }
   });
 

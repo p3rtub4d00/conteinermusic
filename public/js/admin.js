@@ -23,6 +23,7 @@ const adminPlayHistoryList = document.getElementById('adminPlayHistory');
 const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
+let inactivityItems = [];
 
 // --- ✨ NOVA FUNÇÃO: Toastify Helper (Igual ao main.js) ---
 function showToast(message, type = 'info') {
@@ -50,9 +51,21 @@ function showToast(message, type = 'info') {
 if (saveListBtn) {
     saveListBtn.addEventListener('click', () => {
         const names = inactivityListText.value.split('\n').map(name => name.trim()).filter(name => name.length > 0);
-        socket.emit('admin:saveInactivityList', names);
-        // 🔄 SUBSTITUIÇÃO DE ALERT
-        showToast('Lista de inatividade salva no banco de dados!', 'success');
+        const availableItems = [...inactivityItems];
+        const itemsToSave = names.map(title => {
+            const matchIndex = availableItems.findIndex(item => item.title === title);
+            return matchIndex === -1 ? { title } : availableItems.splice(matchIndex, 1)[0];
+        });
+
+        socket.emit('admin:saveInactivityList', itemsToSave, (result) => {
+            if (!result?.ok) return showToast(result?.error || 'Não foi possível salvar a lista.', 'error');
+            inactivityItems = itemsToSave.filter(item => !result.failedTitles?.includes(item.title));
+            if (result.failedTitles?.length) {
+                showToast(`${result.saved} música(s) salva(s). Não encontradas: ${result.failedTitles.join(', ')}`, 'error');
+            } else {
+                showToast(`${result.saved} música(s) salva(s) na lista de inatividade!`, 'success');
+            }
+        });
     });
 }
 
@@ -103,8 +116,10 @@ if (inactivitySearchResultsDiv) {
     inactivitySearchResultsDiv.addEventListener('click', (e) => {
         if (e.target.classList.contains('add-inactivity-btn')) {
             const videoTitle = e.target.dataset.title;
+            const videoId = e.target.dataset.id;
             if (videoTitle && inactivityListText) {
                 inactivityListText.value += videoTitle + '\n';
+                if (videoId) inactivityItems.push({ title: videoTitle, videoId });
                 inactivitySearchInput.value = '';
                 inactivitySearchResultsDiv.innerHTML = '';
                 showToast('Adicionado ao campo de texto. Clique em "Salvar Lista" para confirmar.', 'info');
@@ -179,7 +194,10 @@ socket.on('admin:updateRevenue', (amount) => {
 });
 
 socket.on('admin:loadInactivityList', (nameArray) => {
-  if (inactivityListText) inactivityListText.value = nameArray.join('\n');
+  inactivityItems = (nameArray || []).map(item => typeof item === 'string'
+    ? { title: item }
+    : { title: item.title, videoId: item.videoId });
+  if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
 });
 
 socket.on('admin:searchResults', (results) => {
@@ -211,7 +229,7 @@ socket.on('admin:inactivitySearchResults', (results) => {
         <strong>${video.title}</strong>
         <small>${video.channel}</small>
       </div>
-      <button class="add-inactivity-btn" data-title="${video.title.replace(/"/g, "'")}">Adicionar</button>
+      <button class="add-inactivity-btn" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">Adicionar</button>
     </div>
   `).join('');
 });
