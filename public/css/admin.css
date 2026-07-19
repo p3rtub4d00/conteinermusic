@@ -103,6 +103,17 @@ main { }
 .form-group.vertical textarea { /* ... (inalterado) ... */ }
 .form-group button { height: 44px; } /* Ajusta altura */
 
+.password-form {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.password-form input,
+.password-form button {
+  width: 100%;
+  min-width: 0;
+}
+
 input[type="text"], input[type="password"], textarea {
   flex-grow: 1;
   padding: 10px; /* Reduz padding */
