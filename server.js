@@ -707,11 +707,15 @@ io.on("connection", async (socket) => {
         console.log(`[Admin] Lista salva: ${newItems.length} itens.`);
 
         if (!isCustomerPlaying && !nowPlayingInfo) startInactivityTimer();
-        if (typeof callback === 'function') callback({ ok: true, saved: newItems.length, failedTitles });
+        const result = { ok: true, saved: newItems.length, failedTitles, items: newItems };
+        socket.emit('admin:inactivityListSaved', result);
+        if (typeof callback === 'function') callback(result);
 
     } catch (err) {
         console.error('[Admin] Erro ao salvar lista:', err);
-        if (typeof callback === 'function') callback({ ok: false, error: 'Não foi possível salvar a lista.' });
+        const result = { ok: false, error: 'Não foi possível salvar a lista.' };
+        socket.emit('admin:inactivityListSaved', result);
+        if (typeof callback === 'function') callback(result);
     }
   });
 

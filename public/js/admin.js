@@ -29,6 +29,7 @@ const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
 let inactivityItems = [];
+let isSavingInactivityList = false;
 
 // --- ✨ NOVA FUNÇÃO: Toastify Helper (Igual ao main.js) ---
 function showToast(message, type = 'info') {
@@ -55,6 +56,8 @@ function showToast(message, type = 'info') {
 // 1. Salvar lista de inatividade
 if (saveListBtn) {
     saveListBtn.addEventListener('click', () => {
+        if (isSavingInactivityList) return;
+        if (!socket.connected) return showToast('Sem conexão com o servidor. Tente novamente em instantes.', 'error');
         const names = inactivityListText.value.split('\n').map(name => name.trim()).filter(name => name.length > 0);
         const availableItems = [...inactivityItems];
         const itemsToSave = names.map(title => {
@@ -62,15 +65,10 @@ if (saveListBtn) {
             return matchIndex === -1 ? { title } : availableItems.splice(matchIndex, 1)[0];
         });
 
-        socket.emit('admin:saveInactivityList', itemsToSave, (result) => {
-            if (!result?.ok) return showToast(result?.error || 'Não foi possível salvar a lista.', 'error');
-            inactivityItems = itemsToSave.filter(item => !result.failedTitles?.includes(item.title));
-            if (result.failedTitles?.length) {
-                showToast(`${result.saved} música(s) salva(s). Não encontradas: ${result.failedTitles.join(', ')}`, 'error');
-            } else {
-                showToast(`${result.saved} música(s) salva(s) na lista de inatividade!`, 'success');
-            }
-        });
+        isSavingInactivityList = true;
+        saveListBtn.disabled = true;
+        saveListBtn.textContent = 'Salvando...';
+        socket.emit('admin:saveInactivityList', itemsToSave);
     });
 }
 
@@ -248,6 +246,23 @@ socket.on('admin:loadInactivityList', (nameArray) => {
     ? { title: item }
     : { title: item.title, videoId: item.videoId });
   if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
+});
+
+socket.on('admin:inactivityListSaved', (result) => {
+  isSavingInactivityList = false;
+  if (saveListBtn) {
+    saveListBtn.disabled = false;
+    saveListBtn.textContent = 'Salvar Lista';
+  }
+  if (!result?.ok) return showToast(result?.error || 'Não foi possível salvar a lista.', 'error');
+
+  inactivityItems = result.items || [];
+  if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
+  if (result.failedTitles?.length) {
+    showToast(`${result.saved} música(s) salva(s). Não encontradas: ${result.failedTitles.join(', ')}`, 'error');
+  } else {
+    showToast(`${result.saved} música(s) salva(s) na lista de inatividade!`, 'success');
+  }
 });
 
 socket.on('admin:searchResults', (results) => {
