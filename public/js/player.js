@@ -6,6 +6,17 @@ let currentVideoTimer = null;
 let maxPlaybackTimeMs = 5 * 60 * 1000; // 5 minutos (padrão)
 
 let pendingVideo = null;
+// Enquanto um novo vídeo está carregando, o iframe pode informar que o vídeo
+// anterior terminou. Esse evento não deve avançar a fila novamente.
+let isLoadingNewVideo = false;
+let hasReportedVideoEnd = false;
+let ignoreEndedEventsUntil = 0;
+
+function reportVideoEnded() {
+  if (hasReportedVideoEnd) return;
+  hasReportedVideoEnd = true;
+  socket.emit('player:videoEnded');
+}
 
 // Elementos da Interface
 const promoBannerElement = document.getElementById('promo-banner');
@@ -142,29 +153,39 @@ function onPlayerStateChange(event) {
     }
   }
   if (event.data === YT.PlayerState.PLAYING) {
+    isLoadingNewVideo = false;
+    hasReportedVideoEnd = false;
     if (!currentVideoTimer) {
       currentVideoTimer = setTimeout(() => {
-        socket.emit('player:videoEnded');
+        reportVideoEnded();
       }, maxPlaybackTimeMs);
     }
   }
   else if (event.data === YT.PlayerState.ENDED) {
+      if (isLoadingNewVideo || Date.now() < ignoreEndedEventsUntil) {
+        console.log('[Player.js] Fim do vídeo anterior durante carregamento ignorado.');
+        return;
+      }
       if (synth && synth.speaking) synth.cancel();
       if (currentVideoTimer) {
           clearTimeout(currentVideoTimer);
           currentVideoTimer = null;
       }
-      socket.emit('player:videoEnded');
+      reportVideoEnded();
   }
 }
 
 function onPlayerError(event) {
+    if (isLoadingNewVideo || Date.now() < ignoreEndedEventsUntil) {
+        console.log('[Player.js] Erro do vídeo anterior durante carregamento ignorado.');
+        return;
+    }
     if (synth && synth.speaking) synth.cancel();
     if (currentVideoTimer) {
         clearTimeout(currentVideoTimer);
         currentVideoTimer = null;
     }
-    socket.emit('player:videoEnded');
+    reportVideoEnded();
 }
 
 // Socket Events
@@ -257,9 +278,14 @@ function playVideo({ videoId, title, message }) {
     clearTimeout(currentVideoTimer);
     currentVideoTimer = null;
   }
+  // Marque antes de parar o vídeo atual: stopVideo pode disparar ENDED.
+  isLoadingNewVideo = true;
+  ignoreEndedEventsUntil = Date.now() + 1500;
   try { player.stopVideo(); } catch(e){}
 
-  const loadAndPlayVideo = () => player.loadVideoById(videoId);
+  const loadAndPlayVideo = () => {
+    player.loadVideoById(videoId);
+  };
 
   if (message && message.trim().length > 0 && synth) {
     const utterance = new SpeechSynthesisUtterance(message);

@@ -127,6 +127,7 @@ const INACTIVITY_TIMEOUT = 5000;
 let inactivityTimer = null;
 let nowPlayingInfo = null;
 let isCustomerPlaying = false;
+let isAdvancingQueue = false;
 
 // Helpers
 async function getConfig() {
@@ -186,6 +187,14 @@ async function broadcastPlayerState() {
 }
 
 async function playNextInQueue() {
+  // O YouTube pode disparar mais de um evento de fim durante a troca de vídeo.
+  // Sem esta trava, chamadas concorrentes removem mais de uma música da fila.
+  if (isAdvancingQueue) {
+    console.log('[Server] Avanço da fila já em andamento; evento duplicado ignorado.');
+    return;
+  }
+  isAdvancingQueue = true;
+
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
 
@@ -229,6 +238,8 @@ async function playNextInQueue() {
       broadcastPlayerState();
   } catch (err) {
       console.error('[PlayNext] Erro ao processar fila:', err);
+  } finally {
+      isAdvancingQueue = false;
   }
 }
 
