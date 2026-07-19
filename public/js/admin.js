@@ -118,7 +118,11 @@ if (inactivitySearchResultsDiv) {
             const videoTitle = e.target.dataset.title;
             const videoId = e.target.dataset.id;
             if (videoTitle && inactivityListText) {
-                inactivityListText.value += videoTitle + '\n';
+                // O último texto pode não terminar com Enter. Garanta o
+                // separador antes de adicionar outro vídeo, para que dois
+                // títulos nunca virem uma única busca.
+                const separator = inactivityListText.value.trim().length > 0 ? '\n' : '';
+                inactivityListText.value += separator + videoTitle + '\n';
                 if (videoId) inactivityItems.push({ title: videoTitle, videoId });
                 inactivitySearchInput.value = '';
                 inactivitySearchResultsDiv.innerHTML = '';
