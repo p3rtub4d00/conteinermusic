@@ -2,6 +2,7 @@ const socket = io();
 
 // Elementos da DOM
 const revenueSpan = document.getElementById('revenue');
+const resetRevenueBtn = document.getElementById('resetRevenueBtn');
 const searchVideoBtn = document.getElementById('searchVideoBtn');
 const adminVideoSearchInput = document.getElementById('adminVideoSearchInput');
 const adminSearchResultsDiv = document.getElementById('adminSearchResults');
@@ -65,6 +66,16 @@ if (saveListBtn) {
             } else {
                 showToast(`${result.saved} música(s) salva(s) na lista de inatividade!`, 'success');
             }
+        });
+    });
+}
+
+if (resetRevenueBtn) {
+    resetRevenueBtn.addEventListener('click', () => {
+        if (!confirm('Deseja zerar o faturamento do dia? Esta ação não apaga os pagamentos registrados.')) return;
+        socket.emit('admin:resetRevenue', (result) => {
+            if (!result?.ok) return showToast('Não foi possível zerar o faturamento.', 'error');
+            showToast('Faturamento do dia zerado.', 'success');
         });
     });
 }

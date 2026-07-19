@@ -602,6 +602,20 @@ io.on("connection", async (socket) => {
     }
   });
 
+  socket.on('admin:resetRevenue', async (callback) => {
+    try {
+      const config = await getConfig();
+      config.dailyRevenue = 0;
+      await config.save();
+      io.emit('admin:updateRevenue', config.dailyRevenue);
+      console.log(`[Admin] Faturamento zerado por: ${socket.id}`);
+      if (typeof callback === 'function') callback({ ok: true });
+    } catch (error) {
+      console.error('[Admin] Erro ao zerar faturamento:', error);
+      if (typeof callback === 'function') callback({ ok: false });
+    }
+  });
+
   socket.on('admin:saveInactivityList', async (itemArray, callback) => {
     console.log('[Admin] Salvando lista...');
     const newItems = [];
