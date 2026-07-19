@@ -202,6 +202,29 @@ async function playNextInQueue() {
       const nextVideo = await QueueModel.findOneAndDelete({}, { sort: { priority: -1, createdAt: 1 } });
 
       if (nextVideo) {
+        // Proteção para pedidos antigos que tenham sido duplicados por um
+        // webhook repetido: cada música só toca uma vez por pagamento.
+        if (nextVideo.isCustomer && nextVideo.mpPaymentId) {
+          const songsFromSameOrder = await QueueModel.find({
+            mpPaymentId: nextVideo.mpPaymentId,
+            isCustomer: true
+          }).sort({ createdAt: 1 }).select('_id videoId').lean();
+
+          const seenVideoIds = new Set([nextVideo.videoId]);
+          const duplicateIds = songsFromSameOrder
+            .filter(song => {
+              if (seenVideoIds.has(song.videoId)) return true;
+              seenVideoIds.add(song.videoId);
+              return false;
+            })
+            .map(song => song._id);
+
+          if (duplicateIds.length > 0) {
+            await QueueModel.deleteMany({ _id: { $in: duplicateIds } });
+            console.log(`[Server] ${duplicateIds.length} música(s) duplicada(s) removida(s) do pedido ${nextVideo.mpPaymentId}.`);
+          }
+        }
+
         const source = nextVideo.isCustomer
           ? 'customer'
           : (nextVideo.priority === 0 ? 'inactivity' : 'admin');
@@ -432,12 +455,17 @@ app.post("/webhook", async (req, res) => {
     const mpPayment = await payment.get({ id: paymentId });
 
     if (mpPayment.status === 'approved') {
-      const dbPayment = await PaymentModel.findOne({ mpPaymentId: paymentId.toString() });
+      // O Mercado Pago pode reenviar o mesmo webhook em paralelo. Esta
+      // atualização condicional é atômica: somente a primeira chamada muda o
+      // pagamento para aprovado e, portanto, só ela pode inserir a fila.
+      const dbPayment = await PaymentModel.findOneAndUpdate(
+        { mpPaymentId: paymentId.toString(), status: { $ne: 'approved' } },
+        { $set: { status: 'approved' } },
+        { new: true }
+      );
 
-      if (dbPayment && dbPayment.status !== 'approved') {
+      if (dbPayment) {
         console.log(`[Server] Pagamento ${paymentId} APROVADO via Webhook.`);
-        dbPayment.status = 'approved';
-        await dbPayment.save();
 
         const config = await getConfig();
         config.dailyRevenue += dbPayment.amount;
