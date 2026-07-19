@@ -3,6 +3,10 @@ const socket = io();
 // Elementos da DOM
 const revenueSpan = document.getElementById('revenue');
 const resetRevenueBtn = document.getElementById('resetRevenueBtn');
+const currentAdminPasswordInput = document.getElementById('currentAdminPassword');
+const newAdminPasswordInput = document.getElementById('newAdminPassword');
+const confirmAdminPasswordInput = document.getElementById('confirmAdminPassword');
+const changeAdminPasswordBtn = document.getElementById('changeAdminPasswordBtn');
 const searchVideoBtn = document.getElementById('searchVideoBtn');
 const adminVideoSearchInput = document.getElementById('adminVideoSearchInput');
 const adminSearchResultsDiv = document.getElementById('adminSearchResults');
@@ -77,6 +81,37 @@ if (resetRevenueBtn) {
             if (!result?.ok) return showToast('Não foi possível zerar o faturamento.', 'error');
             showToast('Faturamento do dia zerado.', 'success');
         });
+    });
+}
+
+if (changeAdminPasswordBtn) {
+    changeAdminPasswordBtn.addEventListener('click', async () => {
+        const currentPassword = currentAdminPasswordInput?.value || '';
+        const newPassword = newAdminPasswordInput?.value || '';
+        const confirmation = confirmAdminPasswordInput?.value || '';
+        if (!currentPassword || !newPassword) return showToast('Preencha todos os campos de senha.', 'error');
+        if (newPassword.length < 8) return showToast('A nova senha deve ter pelo menos 8 caracteres.', 'error');
+        if (newPassword !== confirmation) return showToast('A confirmação não corresponde à nova senha.', 'error');
+
+        changeAdminPasswordBtn.disabled = true;
+        try {
+            const response = await fetch('/admin/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const result = await response.json();
+            if (!result?.ok) throw new Error(result?.error || 'Não foi possível alterar a senha.');
+            currentAdminPasswordInput.value = '';
+            newAdminPasswordInput.value = '';
+            confirmAdminPasswordInput.value = '';
+            showToast('Senha alterada com sucesso. Use a nova senha no próximo acesso.', 'success');
+        } catch (error) {
+            showToast(error.message || 'Não foi possível alterar a senha.', 'error');
+        } finally {
+            changeAdminPasswordBtn.disabled = false;
+        }
     });
 }
 

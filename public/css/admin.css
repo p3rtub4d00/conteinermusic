@@ -103,7 +103,7 @@ main { }
 .form-group.vertical textarea { /* ... (inalterado) ... */ }
 .form-group button { height: 44px; } /* Ajusta altura */
 
-input[type="text"], textarea {
+input[type="text"], input[type="password"], textarea {
   flex-grow: 1;
   padding: 10px; /* Reduz padding */
   font-size: 1rem; /* Reduz fonte */

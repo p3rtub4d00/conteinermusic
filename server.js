@@ -5,9 +5,11 @@ import dotenv from "dotenv";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import youtubeSearchApi from "youtube-search-api";
 import mongoose from "mongoose";
-import basicAuth from "express-basic-auth";
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 
 dotenv.config();
+const scrypt = promisify(scryptCallback);
 
 // --- Configuração do MongoDB / Mongoose ---
 console.log('[System] Iniciando conexão com MongoDB...');
@@ -23,7 +25,9 @@ const ConfigSchema = new mongoose.Schema({
   dailyRevenue: { type: Number, default: 0.0 },
   currentPromoText: { type: String, default: "Bem-vindo ao Contêiner Music Box!" },
   currentVolume: { type: Number, default: 50 },
-  isMuted: { type: Boolean, default: true }
+  isMuted: { type: Boolean, default: true },
+  adminPasswordHash: String,
+  adminPasswordChangedAt: Date
 });
 const ConfigModel = mongoose.model('Config', ConfigSchema);
 
@@ -95,18 +99,79 @@ const io = new Server(server);
 
 app.use(express.json());
 
-// 🔒 SEGURANÇA DO ADMIN 🔒
-app.use('/admin.html', basicAuth({
-    users: { 
-        [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'admin' 
-    },
-    challenge: true,
-    unauthorizedResponse: (req) => {
-        return req.auth 
-            ? 'Credenciais rejeitadas' 
-            : 'Acesso negado: Você precisa de senha para acessar o painel de controle.';
+function safeTextEquals(value, expected) {
+  const valueBuffer = Buffer.from(String(value));
+  const expectedBuffer = Buffer.from(String(expected));
+  return valueBuffer.length === expectedBuffer.length && timingSafeEqual(valueBuffer, expectedBuffer);
+}
+
+async function hashPassword(password) {
+  const salt = randomBytes(16).toString('hex');
+  const derivedKey = await scrypt(password, salt, 64);
+  return `${salt}:${derivedKey.toString('hex')}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  if (!storedHash) return safeTextEquals(password, process.env.ADMIN_PASS || 'admin');
+  const [salt, savedKey] = storedHash.split(':');
+  if (!salt || !savedKey) return false;
+  const derivedKey = await scrypt(password, salt, 64);
+  const savedKeyBuffer = Buffer.from(savedKey, 'hex');
+  return savedKeyBuffer.length === derivedKey.length && timingSafeEqual(savedKeyBuffer, derivedKey);
+}
+
+async function requireAdminAuth(req, res, next) {
+  const authorization = req.headers.authorization || '';
+  if (!authorization.startsWith('Basic ')) {
+    res.set('WWW-Authenticate', 'Basic realm="Painel Admin"');
+    return res.status(401).send('Acesso negado: senha necessária.');
+  }
+
+  const credentials = Buffer.from(authorization.slice(6), 'base64').toString('utf8');
+  const separator = credentials.indexOf(':');
+  const username = separator >= 0 ? credentials.slice(0, separator) : '';
+  const password = separator >= 0 ? credentials.slice(separator + 1) : '';
+
+  try {
+    const config = await getConfig();
+    const validUser = safeTextEquals(username, process.env.ADMIN_USER || 'admin');
+    const validPassword = await verifyPassword(password, config.adminPasswordHash);
+    if (validUser && validPassword) return next();
+  } catch (error) {
+    console.error('[Admin] Erro ao validar credenciais:', error);
+  }
+
+  res.set('WWW-Authenticate', 'Basic realm="Painel Admin"');
+  return res.status(401).send('Credenciais rejeitadas.');
+}
+
+app.use('/admin.html', requireAdminAuth);
+
+app.post('/admin/change-password', requireAdminAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({ ok: false, error: 'Dados inválidos.' });
     }
-}));
+    if (newPassword.length < 8) {
+      return res.status(400).json({ ok: false, error: 'A nova senha deve ter pelo menos 8 caracteres.' });
+    }
+
+    const config = await getConfig();
+    if (!await verifyPassword(currentPassword, config.adminPasswordHash)) {
+      return res.status(403).json({ ok: false, error: 'Senha atual incorreta.' });
+    }
+
+    config.adminPasswordHash = await hashPassword(newPassword);
+    config.adminPasswordChangedAt = new Date();
+    await config.save();
+    console.log('[Admin] Senha do painel alterada.');
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('[Admin] Erro ao alterar senha:', error);
+    return res.status(500).json({ ok: false, error: 'Não foi possível alterar a senha.' });
+  }
+});
 
 app.use(express.static("public"));
 

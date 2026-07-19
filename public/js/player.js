@@ -176,10 +176,7 @@ function onPlayerStateChange(event) {
 }
 
 function onPlayerError(event) {
-    if (isLoadingNewVideo || Date.now() < ignoreEndedEventsUntil) {
-        console.log('[Player.js] Erro do vídeo anterior durante carregamento ignorado.');
-        return;
-    }
+    console.warn(`[Player.js] Vídeo indisponível ou com erro (${event.data}). Pulando para o próximo.`);
     if (synth && synth.speaking) synth.cancel();
     if (currentVideoTimer) {
         clearTimeout(currentVideoTimer);
