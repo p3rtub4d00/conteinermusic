@@ -192,6 +192,7 @@ const mpClient = new MercadoPagoConfig({
 // --- Variáveis de Estado em Memória ---
 const INACTIVITY_TIMEOUT = 5000;
 let inactivityTimer = null;
+let customerPlaybackTimer = null; // Timer específico para limitar apenas músicas pagas por clientes
 let nowPlayingInfo = null;
 let isCustomerPlaying = false;
 let isAdvancingQueue = false;
@@ -265,6 +266,12 @@ async function playNextInQueue() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
 
+  // Limpa o timer de limite de tempo da música anterior (se houver)
+  if (customerPlaybackTimer) {
+    clearTimeout(customerPlaybackTimer);
+    customerPlaybackTimer = null;
+  }
+
   try {
       const nextVideo = await QueueModel.findOneAndDelete({}, { sort: { priority: -1, createdAt: 1 } });
 
@@ -310,8 +317,23 @@ async function playNextInQueue() {
             isCustomer: nextVideo.isCustomer
         };
         isCustomerPlaying = nowPlayingInfo.isCustomer;
-        console.log(`[Server] Tocando: ${nowPlayingInfo.title}`);
+        console.log(`[Server] Tocando: ${nowPlayingInfo.title} | É cliente? ${isCustomerPlaying}`);
         
+        // --- APLICAÇÃO DO LIMITADOR APENAS PARA CLIENTES ---
+        if (isCustomerPlaying) {
+          const config = await getConfig();
+          const maxMinutes = config.maxPlaybackMinutes || 5;
+          const maxMs = maxMinutes * 60 * 1000;
+          console.log(`[Server] Limitando música de cliente a ${maxMinutes} minuto(s).`);
+          
+          customerPlaybackTimer = setTimeout(() => {
+            console.log(`[Server] Tempo limite de ${maxMinutes} min atingido para cliente. Pulando música.`);
+            playNextInQueue();
+          }, maxMs);
+        } else {
+          console.log(`[Server] Música da Casa / Autoplay rodando livre sem limite de tempo.`);
+        }
+
         io.emit('player:playVideo', {
           videoId: nowPlayingInfo.id,
           title: nowPlayingInfo.title,
