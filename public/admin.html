@@ -131,7 +131,7 @@
                 <div class="column">
                     
                     <!-- Card: Autoplay / Inatividade -->
-                    <section class="card full-height" id="autoplay-section">
+                    <section class="card" id="autoplay-section">
                         <div class="card-header">
                             <h2><i class="fa-solid fa-robot"></i> Inteligência de Inatividade (Autoplay)</h2>
                         </div>
@@ -177,6 +177,26 @@
                         </div>
                     </section>
 
+                    <!-- Card: Filtro de Músicas / Palavras Proibidas -->
+                    <section class="card" id="filter-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-ban"></i> Filtro de Conteúdo (Bloqueios)</h2>
+                        </div>
+                        <p class="helper-text">Insira palavras, artistas ou termos que não devem aparecer nas buscas ou tocar no estabelecimento.</p>
+                        
+                        <div class="form-group row">
+                            <input type="text" id="blockedKeywordInput" class="form-control" placeholder="Ex: Nome de artista ou termo...">
+                            <button id="addBlockedKeywordBtn" class="btn btn-danger"><i class="fa-solid fa-plus"></i> Bloquear</button>
+                        </div>
+
+                        <div class="form-group vertical" style="margin-top: 15px;">
+                            <label class="form-label">Termos Bloqueados Atualmente</label>
+                            <div id="blockedKeywordsListContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; max-height: 150px; overflow-y: auto; padding: 5px; background: rgba(0,0,0,0.05); border-radius: 8px;">
+                                <span style="font-size: 0.85rem; color: #666;">Nenhum termo bloqueado.</span>
+                            </div>
+                        </div>
+                    </section>
+
                     <!-- Card: Configurações do Sistema -->
                     <section class="card" id="settings-section">
                         <div class="card-header">
@@ -196,8 +216,8 @@
 
                         <!-- Tempo Máximo -->
                         <div class="settings-group">
-                            <label class="form-label" for="maxPlaybackMinutesInput"><i class="fa-solid fa-stopwatch"></i> Tempo Máximo por Música (Minutos)</label>
-                            <p class="helper-text" style="font-size: 0.8rem;">Isso impede que clientes coloquem shows inteiros e também filtra as playlists automáticas.</p>
+                            <label class="form-label" for="maxPlaybackMinutesInput"><i class="fa-solid fa-stopwatch"></i> Tempo Máximo por Música (Clientes)</label>
+                            <p class="helper-text" style="font-size: 0.8rem;">Isso impede que clientes coloquem shows inteiros. A música da casa roda livre.</p>
                             <div class="form-group row">
                                 <input type="number" id="maxPlaybackMinutesInput" class="form-control" min="1" max="30" value="5" style="max-width: 100px;">
                                 <button id="saveMaxPlaybackBtn" class="btn btn-primary">Salvar Tempo</button>
