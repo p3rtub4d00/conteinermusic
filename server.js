@@ -19,7 +19,6 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- Schemas (Modelos de Dados) ---
 
-// 1. Configurações Globais (ATUALIZADO PARA PLAYLIST E AUTOPLAY)
 const ConfigSchema = new mongoose.Schema({
   key: { type: String, default: 'main_config', unique: true },
   dailyRevenue: { type: Number, default: 0.0 },
@@ -29,12 +28,11 @@ const ConfigSchema = new mongoose.Schema({
   adminPasswordHash: String,
   adminPasswordChangedAt: Date,
   maxPlaybackMinutes: { type: Number, default: 5 },
-  autoplayMode: { type: String, default: 'manual' }, // 'manual' ou 'playlist'
-  playlistLink: { type: String, default: '' } // URL da playlist do YouTube
+  autoplayMode: { type: String, default: 'manual' },
+  playlistLink: { type: String, default: '' }
 });
 const ConfigModel = mongoose.model('Config', ConfigSchema);
 
-// 2. Lista de Inatividade (Manual)
 const InactivitySongSchema = new mongoose.Schema({
   title: String,
   videoId: String,
@@ -42,7 +40,6 @@ const InactivitySongSchema = new mongoose.Schema({
 });
 const InactivityModel = mongoose.model('InactivitySong', InactivitySongSchema);
 
-// 3. Pagamentos
 const PaymentSchema = new mongoose.Schema({
   mpPaymentId: { type: String, unique: true },
   socketId: String,
@@ -61,15 +58,13 @@ const PaymentSchema = new mongoose.Schema({
 });
 const PaymentModel = mongoose.model('Payment', PaymentSchema);
 
-// 4. Cache de Busca
 const SearchCacheSchema = new mongoose.Schema({
   term: { type: String, unique: true },
   results: Array, 
-  createdAt: { type: Date, default: Date.now, expires: 86400 } // Expira em 24h
+  createdAt: { type: Date, default: Date.now, expires: 86400 }
 });
 const SearchCacheModel = mongoose.model('SearchCache', SearchCacheSchema);
 
-// 5. Fila de Reprodução
 const QueueSchema = new mongoose.Schema({
   videoId: String,
   title: String,
@@ -77,12 +72,11 @@ const QueueSchema = new mongoose.Schema({
   message: String,
   userPhone: String,
   mpPaymentId: String,
-  priority: { type: Number, default: 1 }, // 1 = Cliente/Admin, 0 = Inatividade
+  priority: { type: Number, default: 1 },
   createdAt: { type: Date, default: Date.now }
 });
 const QueueModel = mongoose.model('Queue', QueueSchema);
 
-// 6. Histórico de músicas tocadas
 const PlayHistorySchema = new mongoose.Schema({
   videoId: String,
   title: String,
@@ -94,8 +88,6 @@ const PlayHistorySchema = new mongoose.Schema({
 });
 const PlayHistoryModel = mongoose.model('PlayHistory', PlayHistorySchema);
 
-
-// --- Inicialização do Servidor ---
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -184,24 +176,20 @@ app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, ts: new Date().toISOString() });
 });
 
-// Configuração do Mercado Pago
 const mpClient = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN
 });
 
-// --- Variáveis de Estado em Memória ---
 const INACTIVITY_TIMEOUT = 5000;
 let inactivityTimer = null;
 let nowPlayingInfo = null;
 let isCustomerPlaying = false;
 let isAdvancingQueue = false;
 
-// Helpers
 async function getConfig() {
   try {
     let config = await ConfigModel.findOne({ key: 'main_config' });
     if (!config) {
-      console.log('[DB] Configuração não encontrada, criando nova...');
       config = await ConfigModel.create({ key: 'main_config' });
     }
     return config;
@@ -233,7 +221,6 @@ async function fetchVideoIdByName(name) {
   }
 }
 
-// Controle do Player
 async function broadcastPlayerState() {
   try {
     const queue = await QueueModel.find({}).sort({ priority: -1, createdAt: 1 }).lean(); 
@@ -286,7 +273,6 @@ async function playNextInQueue() {
 
           if (duplicateIds.length > 0) {
             await QueueModel.deleteMany({ _id: { $in: duplicateIds } });
-            console.log(`[Server] ${duplicateIds.length} música(s) duplicada(s) removida(s) do pedido ${nextVideo.mpPaymentId}.`);
           }
         }
 
@@ -348,7 +334,6 @@ async function startInactivityTimer() {
 
       const config = await getConfig();
 
-      // --- MODO 1: PLAYLIST DINÂMICA INTELIGENTE ---
       if (config.autoplayMode === 'playlist' && config.playlistLink) {
           console.log('[Server] Buscando música na Playlist Dinâmica...');
           try {
@@ -388,7 +373,7 @@ async function startInactivityTimer() {
                       });
                       
                       playNextInQueue();
-                      return; // Sai da função para não executar a lista manual
+                      return;
                   }
               }
           } catch (err) {
@@ -396,7 +381,6 @@ async function startInactivityTimer() {
           }
       }
 
-      // --- MODO 2: LISTA MANUAL (Fallback Original) ---
       const inactivitySongs = await InactivityModel.find({}).lean(); 
       if (inactivitySongs.length > 0) {
         console.log('[Server] Inatividade detectada. Carregando lista manual do banco.');
@@ -411,7 +395,6 @@ async function startInactivityTimer() {
         await QueueModel.insertMany(itemsToInsert);
         playNextInQueue();
       } else {
-        console.log('[Server] Inatividade, mas banco de inatividade está vazio.');
         broadcastPlayerState();
       }
     }, INACTIVITY_TIMEOUT);
@@ -419,8 +402,6 @@ async function startInactivityTimer() {
     console.error('[Timer] Erro na inatividade:', err);
   }
 }
-
-// --- Rotas HTTP ---
 
 app.get("/user-history", async (req, res) => {
     try {
@@ -449,7 +430,6 @@ app.get("/user-history", async (req, res) => {
 
         res.json({ ok: true, history: Array.from(uniqueVideos.values()) });
     } catch (err) {
-        console.error(err);
         res.status(500).json({ ok: false, error: 'Erro ao buscar histórico' });
     }
 });
@@ -460,14 +440,12 @@ app.get("/search", async (req, res) => {
     if (!query) return res.status(400).json({ ok: false, error: "Consulta inválida" });
 
     const lowerQuery = query.toLowerCase().trim();
-
     const cachedEntry = await SearchCacheModel.findOne({ term: lowerQuery }).lean();
     if (cachedEntry) {
         return res.json({ ok: true, results: cachedEntry.results });
     }
 
     const result = await youtubeSearchApi.GetListByKeyword(query, false, 6);
-    
     const items = result.items
       .filter(item => item.id && item.title)
       .map(item => ({
@@ -481,9 +459,7 @@ app.get("/search", async (req, res) => {
         await SearchCacheModel.create({ term: lowerQuery, results: items });
     }
     res.json({ ok: true, results: items });
-
   } catch (err) {
-    console.error("[Search] Erro:", err.message);
     res.status(500).json({ ok: false, error: "Erro interno na busca" });
   }
 });
@@ -494,7 +470,6 @@ app.post("/create-payment", async (req, res) => {
     if (!videos || !amount || !socketId) return res.status(400).json({ ok: false, error: "Dados inválidos." });
 
     const notification_url = "https://conteinermusic.onrender.com/webhook"; 
-
     const payment_data = {
       transaction_amount: Number(amount),
       description: description,
@@ -520,7 +495,6 @@ app.post("/create-payment", async (req, res) => {
       status: 'pending',
       videos: videos
     });
-    console.log(`[Server] Pagamento ${result.id} criado.`);
 
     res.json({
       ok: true,
@@ -529,7 +503,6 @@ app.post("/create-payment", async (req, res) => {
       copiaCola: result.point_of_interaction.transaction_data.qr_code
     });
   } catch (err) {
-    console.error("[Server] Erro Create-Payment:", err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -572,8 +545,6 @@ app.post("/webhook", async (req, res) => {
       );
 
       if (dbPayment) {
-        console.log(`[Server] Pagamento ${paymentId} APROVADO via Webhook.`);
-
         const config = await getConfig();
         config.dailyRevenue += dbPayment.amount;
         await config.save();
@@ -614,16 +585,11 @@ app.post("/webhook", async (req, res) => {
     }
     res.sendStatus(200);
   } catch (err) {
-    console.error("[Server] Webhook Error:", err);
     res.sendStatus(500);
   }
 });
 
-// --- Socket.IO ---
-
 io.on("connection", async (socket) => {
-  console.log("[Socket] Conectado:", socket.id);
-  
   socket.on('player:ready', async () => {
     const [freshConfig, queue] = await Promise.all([
         getConfig(),
@@ -651,17 +617,10 @@ io.on("connection", async (socket) => {
   });
 
   socket.on('player:videoEnded', () => playNextInQueue());
-  socket.on('player:ping', () => {
-    console.log(`[Ping] Keep-alive: ${socket.id}`);
-    socket.emit('player:pong', { ts: Date.now() });
-  });
-
-  socket.on('reaction', (emoji) => {
-      io.emit('player:showReaction', emoji);
-  });
+  socket.on('player:ping', () => socket.emit('player:pong', { ts: Date.now() }));
+  socket.on('reaction', (emoji) => io.emit('player:showReaction', emoji));
 
   socket.on('admin:getList', async () => {
-    console.log(`[Admin] Carregando dados para: ${socket.id}`);
     try {
         const [freshConfig, inactivityList, queue, playHistory] = await Promise.all([
             getConfig(),
@@ -678,7 +637,6 @@ io.on("connection", async (socket) => {
         socket.emit('admin:loadPromoText', freshConfig.currentPromoText);
         socket.emit('admin:playHistory', playHistory);
 
-        // Envios Novos: Autoplay e Tempo Máximo
         socket.emit('admin:loadAutoplayConfig', { 
             mode: freshConfig.autoplayMode, 
             playlistLink: freshConfig.playlistLink 
@@ -686,16 +644,10 @@ io.on("connection", async (socket) => {
         socket.emit('admin:updateMaxPlaybackMinutes', freshConfig.maxPlaybackMinutes);
 
         const formattedQueue = queue.map(item => ({ 
-            id: item.videoId, 
-            title: item.title, 
-            isCustomer: item.isCustomer, 
-            message: item.message 
+            id: item.videoId, title: item.title, isCustomer: item.isCustomer, message: item.message 
         }));
         socket.emit('admin:updatePlayerState', { nowPlaying: nowPlayingInfo, queue: formattedQueue });
-
-    } catch(e) {
-        console.error('[Admin] Erro ao carregar dados:', e);
-    }
+    } catch(e) {}
   });
 
   socket.on('admin:getPlayHistory', async () => {
@@ -703,7 +655,6 @@ io.on("connection", async (socket) => {
       const playHistory = await PlayHistoryModel.find({}).sort({ playedAt: -1 }).limit(100).lean();
       socket.emit('admin:playHistory', playHistory);
     } catch (e) {
-      console.error('[Admin] Erro ao carregar histórico de reprodução:', e);
       socket.emit('admin:playHistory', []);
     }
   });
@@ -714,16 +665,13 @@ io.on("connection", async (socket) => {
       config.dailyRevenue = 0;
       await config.save();
       io.emit('admin:updateRevenue', config.dailyRevenue);
-      console.log(`[Admin] Faturamento zerado por: ${socket.id}`);
       if (typeof callback === 'function') callback({ ok: true });
     } catch (error) {
-      console.error('[Admin] Erro ao zerar faturamento:', error);
       if (typeof callback === 'function') callback({ ok: false });
     }
   });
 
   socket.on('admin:saveInactivityList', async (itemArray, callback) => {
-    console.log('[Admin] Salvando lista manual...');
     const newItems = [];
     const failedTitles = [];
     const items = Array.isArray(itemArray) ? itemArray : [];
@@ -733,27 +681,19 @@ io.on("connection", async (socket) => {
             const name = typeof item === 'string' ? item.trim() : String(item?.title || '').trim();
             if (name.length > 0) {
                 const id = typeof item === 'object' && item.videoId ? item.videoId : await fetchVideoIdByName(name);
-                if (id) {
-                  newItems.push({ title: name, videoId: id });
-                } else {
-                  failedTitles.push(name);
-                }
+                if (id) newItems.push({ title: name, videoId: id });
+                else failedTitles.push(name);
             }
         }
 
         await InactivityModel.deleteMany({});
-        if (newItems.length > 0) {
-            await InactivityModel.insertMany(newItems); 
-        }
-        console.log(`[Admin] Lista manual salva: ${newItems.length} itens.`);
+        if (newItems.length > 0) await InactivityModel.insertMany(newItems); 
 
         if (!isCustomerPlaying && !nowPlayingInfo) startInactivityTimer();
         const result = { ok: true, saved: newItems.length, failedTitles, items: newItems };
         socket.emit('admin:inactivityListSaved', result);
         if (typeof callback === 'function') callback(result);
-
     } catch (err) {
-        console.error('[Admin] Erro ao salvar lista:', err);
         const result = { ok: false, error: 'Não foi possível salvar a lista.' };
         socket.emit('admin:inactivityListSaved', result);
         if (typeof callback === 'function') callback(result);
@@ -779,44 +719,44 @@ io.on("connection", async (socket) => {
   socket.on('admin:addVideo', async ({ videoId, videoTitle }) => {
     if (videoId) {
       try {
-          await QueueModel.create({
-              videoId: videoId,
-              title: videoTitle,
-              isCustomer: false,
-              message: null,
-              priority: 1
-          });
+          await QueueModel.create({ videoId, title: videoTitle, isCustomer: false, message: null, priority: 1 });
           if (!nowPlayingInfo) playNextInQueue();
           else broadcastPlayerState();
-      } catch(e) { console.error(e); }
+      } catch(e) {}
     }
   });
 
-  // --- NOVOS EVENTOS DO PAINEL ADMIN (Autoplay & Tempo) ---
   socket.on('admin:setAutoplayMode', async (mode) => {
       const config = await getConfig();
       config.autoplayMode = mode;
       await config.save();
-      console.log(`[Admin] Modo Autoplay alterado para: ${mode}`);
   });
 
+  // --- CORREÇÃO CIRÚRGICA: LIMPA A FILA ANTIGA E FORÇA A TROCA IMEDIATA ---
   socket.on('admin:savePlaylistLink', async (link, callback) => {
       const config = await getConfig();
       config.playlistLink = link;
+      config.autoplayMode = 'playlist'; // Força o modo dinâmico ativo
       await config.save();
-      console.log(`[Admin] Link de Playlist salvo.`);
-      if (typeof callback === 'function') callback({ ok: true });
       
-      if (config.autoplayMode === 'playlist' && !nowPlayingInfo) {
+      // Limpa músicas pendentes da fila antiga (inatividade/autoplay)
+      await QueueModel.deleteMany({ priority: 0 });
+
+      // Se estiver tocando música da casa, pula agora mesmo para começar o novo gênero
+      if (nowPlayingInfo && !nowPlayingInfo.isCustomer) {
+          playNextInQueue();
+      } else if (!nowPlayingInfo) {
           startInactivityTimer();
       }
+
+      broadcastPlayerState();
+      if (typeof callback === 'function') callback({ ok: true });
   });
 
   socket.on('admin:setMaxPlaybackMinutes', async ({ minutes }) => {
       const config = await getConfig();
       config.maxPlaybackMinutes = minutes;
       await config.save();
-      console.log(`[Admin] Tempo máximo alterado para ${minutes} min`);
   });
 
   socket.on('admin:setPromoText', async (text) => {
