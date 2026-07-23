@@ -19,7 +19,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 // --- Schemas (Modelos de Dados) ---
 
-// 1. Configurações Globais
+// 1. Configurações Globais (ATUALIZADO PARA PLAYLIST E AUTOPLAY)
 const ConfigSchema = new mongoose.Schema({
   key: { type: String, default: 'main_config', unique: true },
   dailyRevenue: { type: Number, default: 0.0 },
@@ -27,11 +27,14 @@ const ConfigSchema = new mongoose.Schema({
   currentVolume: { type: Number, default: 50 },
   isMuted: { type: Boolean, default: true },
   adminPasswordHash: String,
-  adminPasswordChangedAt: Date
+  adminPasswordChangedAt: Date,
+  maxPlaybackMinutes: { type: Number, default: 5 },
+  autoplayMode: { type: String, default: 'manual' }, // 'manual' ou 'playlist'
+  playlistLink: { type: String, default: '' } // URL da playlist do YouTube
 });
 const ConfigModel = mongoose.model('Config', ConfigSchema);
 
-// 2. Lista de Inatividade
+// 2. Lista de Inatividade (Manual)
 const InactivitySongSchema = new mongoose.Schema({
   title: String,
   videoId: String,
@@ -39,11 +42,11 @@ const InactivitySongSchema = new mongoose.Schema({
 });
 const InactivityModel = mongoose.model('InactivitySong', InactivitySongSchema);
 
-// 3. Pagamentos (ATUALIZADO COM TELEFONE)
+// 3. Pagamentos
 const PaymentSchema = new mongoose.Schema({
   mpPaymentId: { type: String, unique: true },
   socketId: String,
-  userPhone: String, // <--- CAMPO NOVO: Para salvar o histórico do cliente
+  userPhone: String,
   amount: Number,
   description: String,
   message: String,
@@ -177,7 +180,6 @@ app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
 
-// Healthcheck simples para manter instância ativa via chamadas periódicas
 app.get('/health', (req, res) => {
   res.status(200).json({ ok: true, ts: new Date().toISOString() });
 });
@@ -210,7 +212,9 @@ async function getConfig() {
       currentPromoText: "Erro ao carregar",
       currentVolume: 50,
       isMuted: true,
-      maxPlaybackMinutes: 5
+      maxPlaybackMinutes: 5,
+      autoplayMode: 'manual',
+      playlistLink: ''
     };
   }
 }
@@ -252,8 +256,6 @@ async function broadcastPlayerState() {
 }
 
 async function playNextInQueue() {
-  // O YouTube pode disparar mais de um evento de fim durante a troca de vídeo.
-  // Sem esta trava, chamadas concorrentes removem mais de uma música da fila.
   if (isAdvancingQueue) {
     console.log('[Server] Avanço da fila já em andamento; evento duplicado ignorado.');
     return;
@@ -267,8 +269,6 @@ async function playNextInQueue() {
       const nextVideo = await QueueModel.findOneAndDelete({}, { sort: { priority: -1, createdAt: 1 } });
 
       if (nextVideo) {
-        // Proteção para pedidos antigos que tenham sido duplicados por um
-        // webhook repetido: cada música só toca uma vez por pagamento.
         if (nextVideo.isCustomer && nextVideo.mpPaymentId) {
           const songsFromSameOrder = await QueueModel.find({
             mpPaymentId: nextVideo.mpPaymentId,
@@ -346,10 +346,60 @@ async function startInactivityTimer() {
       const countCheck = await QueueModel.countDocuments();
       if (countCheck > 0) return; 
 
+      const config = await getConfig();
+
+      // --- MODO 1: PLAYLIST DINÂMICA INTELIGENTE ---
+      if (config.autoplayMode === 'playlist' && config.playlistLink) {
+          console.log('[Server] Buscando música na Playlist Dinâmica...');
+          try {
+              const urlParams = new URLSearchParams(config.playlistLink.split('?')[1] || '');
+              const playlistId = urlParams.get('list') || config.playlistLink.split('list=')[1];
+
+              if (playlistId) {
+                  const playlistData = await youtubeSearchApi.GetPlaylistData(playlistId);
+                  
+                  if (playlistData && playlistData.items && playlistData.items.length > 0) {
+                      const maxSeconds = (config.maxPlaybackMinutes || 5) * 60;
+                      
+                      const validVideos = playlistData.items.filter(item => {
+                          let lengthStr = '';
+                          if (typeof item.length === 'string') lengthStr = item.length;
+                          else if (item.length && item.length.simpleText) lengthStr = item.length.simpleText;
+                          
+                          if (!lengthStr) return true; 
+                          
+                          const parts = lengthStr.split(':').map(Number);
+                          let seconds = 0;
+                          if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
+                          else if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                          
+                          return seconds > 0 && seconds <= maxSeconds;
+                      });
+
+                      const targetList = validVideos.length > 0 ? validVideos : playlistData.items;
+                      const randomVideo = targetList[Math.floor(Math.random() * targetList.length)];
+                      
+                      await QueueModel.create({
+                          videoId: randomVideo.id,
+                          title: randomVideo.title,
+                          isCustomer: false,
+                          message: null,
+                          priority: 0 
+                      });
+                      
+                      playNextInQueue();
+                      return; // Sai da função para não executar a lista manual
+                  }
+              }
+          } catch (err) {
+              console.error('[Server] Erro na Playlist Dinâmica. Caindo para modo manual:', err);
+          }
+      }
+
+      // --- MODO 2: LISTA MANUAL (Fallback Original) ---
       const inactivitySongs = await InactivityModel.find({}).lean(); 
       if (inactivitySongs.length > 0) {
-        console.log('[Server] Inatividade detectada. Carregando lista do banco.');
-        
+        console.log('[Server] Inatividade detectada. Carregando lista manual do banco.');
         const itemsToInsert = inactivitySongs.map(song => ({
           videoId: song.videoId,
           title: song.title || '(Música da Casa)', 
@@ -372,19 +422,16 @@ async function startInactivityTimer() {
 
 // --- Rotas HTTP ---
 
-// [NOVA ROTA] Busca histórico de pedidos pelo telefone
 app.get("/user-history", async (req, res) => {
     try {
         const phone = req.query.phone;
         if (!phone) return res.json({ ok: true, history: [] });
 
-        // Busca pagamentos APROVADOS deste telefone
         const payments = await PaymentModel.find({ 
             userPhone: phone, 
             status: 'approved' 
-        }).sort({ createdAt: -1 }).limit(30); // Limite de segurança para não travar
+        }).sort({ createdAt: -1 }).limit(30);
 
-        // Filtra para pegar apenas videos únicos (sem repetição)
         const uniqueVideos = new Map();
         payments.forEach(p => {
             if(p.videos) {
@@ -406,7 +453,6 @@ app.get("/user-history", async (req, res) => {
         res.status(500).json({ ok: false, error: 'Erro ao buscar histórico' });
     }
 });
-
 
 app.get("/search", async (req, res) => {
   try {
@@ -444,7 +490,6 @@ app.get("/search", async (req, res) => {
 
 app.post("/create-payment", async (req, res) => {
   try {
-    // Adicionado userPhone na leitura dos dados
     const { videos, amount, description, message, socketId, userPhone } = req.body;
     if (!videos || !amount || !socketId) return res.status(400).json({ ok: false, error: "Dados inválidos." });
 
@@ -468,7 +513,7 @@ app.post("/create-payment", async (req, res) => {
     await PaymentModel.create({
       mpPaymentId: result.id.toString(), 
       socketId: socketId,
-      userPhone: userPhone, // Salvando o telefone no banco
+      userPhone: userPhone,
       amount: Number(amount),
       description: description,
       message: message,
@@ -520,9 +565,6 @@ app.post("/webhook", async (req, res) => {
     const mpPayment = await payment.get({ id: paymentId });
 
     if (mpPayment.status === 'approved') {
-      // O Mercado Pago pode reenviar o mesmo webhook em paralelo. Esta
-      // atualização condicional é atômica: somente a primeira chamada muda o
-      // pagamento para aprovado e, portanto, só ela pode inserir a fila.
       const dbPayment = await PaymentModel.findOneAndUpdate(
         { mpPaymentId: paymentId.toString(), status: { $ne: 'approved' } },
         { $set: { status: 'approved' } },
@@ -553,7 +595,6 @@ app.post("/webhook", async (req, res) => {
 
         await QueueModel.insertMany(customerVideos);
 
-        // Notifica TV do novo pedido (Popup)
         if (customerVideos.length > 0) {
             io.emit('player:newOrderNotification', { title: customerVideos[0].title });
         }
@@ -583,9 +624,7 @@ app.post("/webhook", async (req, res) => {
 io.on("connection", async (socket) => {
   console.log("[Socket] Conectado:", socket.id);
   
-  
   socket.on('player:ready', async () => {
-    // Busca em paralelo para ser mais rápido
     const [freshConfig, queue] = await Promise.all([
         getConfig(),
         QueueModel.find({}).sort({ priority: -1, createdAt: 1 }).lean()
@@ -617,17 +656,13 @@ io.on("connection", async (socket) => {
     socket.emit('player:pong', { ts: Date.now() });
   });
 
-  // Evento de Reação
   socket.on('reaction', (emoji) => {
       io.emit('player:showReaction', emoji);
   });
 
-  // --- OTIMIZAÇÃO PRINCIPAL DO ADMIN ---
   socket.on('admin:getList', async () => {
-    console.log(`[Admin] Carregando dados OTIMIZADOS para: ${socket.id}`);
-    
+    console.log(`[Admin] Carregando dados para: ${socket.id}`);
     try {
-        // Busca Configuração, Lista de Inatividade e Fila AO MESMO TEMPO
         const [freshConfig, inactivityList, queue, playHistory] = await Promise.all([
             getConfig(),
             InactivityModel.find({}).select('title videoId').lean(),
@@ -637,12 +672,18 @@ io.on("connection", async (socket) => {
 
         const inactivityItems = inactivityList.map(item => ({ title: item.title, videoId: item.videoId }));
         
-        // Envia tudo de uma vez
         socket.emit('admin:loadInactivityList', inactivityItems);
         socket.emit('admin:updateRevenue', freshConfig.dailyRevenue);
         socket.emit('admin:updateVolume', { volume: freshConfig.currentVolume, isMuted: freshConfig.isMuted });
         socket.emit('admin:loadPromoText', freshConfig.currentPromoText);
         socket.emit('admin:playHistory', playHistory);
+
+        // Envios Novos: Autoplay e Tempo Máximo
+        socket.emit('admin:loadAutoplayConfig', { 
+            mode: freshConfig.autoplayMode, 
+            playlistLink: freshConfig.playlistLink 
+        });
+        socket.emit('admin:updateMaxPlaybackMinutes', freshConfig.maxPlaybackMinutes);
 
         const formattedQueue = queue.map(item => ({ 
             id: item.videoId, 
@@ -682,7 +723,7 @@ io.on("connection", async (socket) => {
   });
 
   socket.on('admin:saveInactivityList', async (itemArray, callback) => {
-    console.log('[Admin] Salvando lista...');
+    console.log('[Admin] Salvando lista manual...');
     const newItems = [];
     const failedTitles = [];
     const items = Array.isArray(itemArray) ? itemArray : [];
@@ -704,7 +745,7 @@ io.on("connection", async (socket) => {
         if (newItems.length > 0) {
             await InactivityModel.insertMany(newItems); 
         }
-        console.log(`[Admin] Lista salva: ${newItems.length} itens.`);
+        console.log(`[Admin] Lista manual salva: ${newItems.length} itens.`);
 
         if (!isCustomerPlaying && !nowPlayingInfo) startInactivityTimer();
         const result = { ok: true, saved: newItems.length, failedTitles, items: newItems };
@@ -751,6 +792,33 @@ io.on("connection", async (socket) => {
     }
   });
 
+  // --- NOVOS EVENTOS DO PAINEL ADMIN (Autoplay & Tempo) ---
+  socket.on('admin:setAutoplayMode', async (mode) => {
+      const config = await getConfig();
+      config.autoplayMode = mode;
+      await config.save();
+      console.log(`[Admin] Modo Autoplay alterado para: ${mode}`);
+  });
+
+  socket.on('admin:savePlaylistLink', async (link, callback) => {
+      const config = await getConfig();
+      config.playlistLink = link;
+      await config.save();
+      console.log(`[Admin] Link de Playlist salvo.`);
+      if (typeof callback === 'function') callback({ ok: true });
+      
+      if (config.autoplayMode === 'playlist' && !nowPlayingInfo) {
+          startInactivityTimer();
+      }
+  });
+
+  socket.on('admin:setMaxPlaybackMinutes', async ({ minutes }) => {
+      const config = await getConfig();
+      config.maxPlaybackMinutes = minutes;
+      await config.save();
+      console.log(`[Admin] Tempo máximo alterado para ${minutes} min`);
+  });
+
   socket.on('admin:setPromoText', async (text) => {
     const config = await getConfig();
     config.currentPromoText = text;
@@ -773,5 +841,5 @@ io.on("connection", async (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🔥 Servidor OTIMIZADO rodando na porta ${PORT}`);
+  console.log(`🔥 Servidor rodando na porta ${PORT}`);
 });
