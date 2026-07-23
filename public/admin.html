@@ -1,47 +1,43 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle do Player | Conteiner Music</title>
-    <!-- CSS Customizado -->
-    <link rel="stylesheet" href="css/admin.css">
-    <!-- Fonte Inter (Google Fonts) -->
+    <meta name="theme-color" content="#0f172a">
+    <title>Painel de Controle | Contêiner Music Box</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/images/logo.png">
+    
+    <!-- CSS Customizado e Fontes -->
+    <link rel="stylesheet" href="/css/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome para Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
+    
     <div class="dashboard-container">
         <!-- Menu Lateral (Sidebar) -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <img src="images/logo.png" alt="Conteiner Music" class="logo-img" onerror="this.src='https://via.placeholder.com/150x40?text=CONTEINER+MUSIC'">
+                <img src="/images/logo.png" alt="Contêiner Music" class="logo-img" id="logo" onerror="this.src='https://via.placeholder.com/150x40?text=CONTEINER+MUSIC'">
             </div>
             
             <nav class="sidebar-nav">
                 <ul class="nav-list">
-                    <li class="nav-item active">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-sliders"></i> Controle de Áudio</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-list-ul"></i> Fila de Reprodução</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-microphone-lines"></i> Vinhetas e Avisos</a>
-                    </li>
+                    <li class="nav-item active"><a href="#player-section" class="nav-link"><i class="fa-solid fa-sliders"></i> Controle do Player</a></li>
+                    <li class="nav-item"><a href="#queue-section" class="nav-link"><i class="fa-solid fa-list-ul"></i> Fila & Buscas</a></li>
+                    <li class="nav-item"><a href="#autoplay-section" class="nav-link"><i class="fa-solid fa-robot"></i> Inatividade (Autoplay)</a></li>
+                    <li class="nav-item"><a href="#settings-section" class="nav-link"><i class="fa-solid fa-gear"></i> Configurações</a></li>
                 </ul>
 
                 <div class="nav-divider"></div>
-
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-gear"></i> Sistema</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link text-danger"><i class="fa-solid fa-power-off"></i> Desligar Player</a>
-                    </li>
-                </ul>
+                <div style="text-align: center; padding: 0 15px;">
+                    <button id="installAppBtn" class="btn btn-success" style="display: none; width: 100%;"><i class="fa-solid fa-mobile-screen"></i> Instalar App</button>
+                </div>
             </nav>
         </aside>
 
@@ -49,76 +45,168 @@
         <main class="main-content">
             <header class="topbar">
                 <div class="topbar-title">
-                    <h1>Painel de Controle</h1>
-                    <p class="subtitle">Gerencie a reprodução e o ambiente sonoro do estabelecimento.</p>
+                    <h1>Painel Administrativo</h1>
+                    <p class="subtitle">Gestão em tempo real do ambiente sonoro.</p>
                 </div>
-                <div class="user-profile">
-                    <span class="user-name">Administrador Local</span>
-                    <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                
+                <!-- Faturamento do Dia no Topo -->
+                <div class="revenue-widget">
+                    <div class="revenue-info">
+                        <span class="revenue-label">Faturamento do Dia</span>
+                        <span class="revenue-value">R$ <span id="revenue">0.00</span></span>
+                    </div>
+                    <button id="resetRevenueBtn" class="btn-icon danger-icon" title="Zerar Faturamento"><i class="fa-solid fa-rotate-left"></i></button>
                 </div>
             </header>
 
-            <section class="dashboard-cards player-section">
-                <!-- Card: Tocando Agora -->
-                <div class="card player-card">
-                    <div class="card-header">
-                        <h2><i class="fa-solid fa-compact-disc"></i> Tocando Agora</h2>
-                        <span class="badge status-online">Transmissão Ativa</span>
-                    </div>
-                    <div class="now-playing">
-                        <div class="track-info">
-                            <h3 id="current-title">Aguardando faixa...</h3>
-                            <p id="current-artist">Conectando ao servidor</p>
+            <div class="grid-layout">
+                <!-- COLUNA ESQUERDA -->
+                <div class="column">
+                    
+                    <!-- Card: Controle do Player -->
+                    <section class="card" id="player-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-compact-disc"></i> Player Principal</h2>
                         </div>
-                        <div class="playback-controls">
-                            <button class="btn-control" id="btn-prev" title="Anterior"><i class="fa-solid fa-backward-step"></i></button>
-                            <button class="btn-control play-pause" id="btn-play" title="Play/Pause"><i class="fa-solid fa-circle-play"></i></button>
-                            <button class="btn-control" id="btn-next" title="Próxima"><i class="fa-solid fa-forward-step"></i></button>
+                        <div class="now-playing-box">
+                            <span class="now-playing-label">Tocando Agora:</span>
+                            <h3 id="adminNowPlaying">Nenhuma música tocando...</h3>
+                            <p id="adminNowPlayingMessage" class="playing-message" style="display: none;"></p>
                         </div>
-                    </div>
+                        
+                        <div class="player-controls">
+                            <button id="pauseBtn" class="btn btn-control"><i class="fa-solid fa-play-pause"></i> Pausar / Tocar</button>
+                            <button id="skipBtn" class="btn btn-control"><i class="fa-solid fa-forward-step"></i> Pular Música</button>
+                        </div>
+                        
+                        <div class="volume-control">
+                            <div class="volume-header">
+                                <span><i class="fa-solid fa-volume-high"></i> Volume Geral</span>
+                                <span id="volumeValue" class="badge">50%</span>
+                            </div>
+                            <input type="range" id="volumeSlider" min="0" max="100" value="50" class="slider">
+                        </div>
+                    </section>
+
+                    <!-- Card: Fila de Reprodução -->
+                    <section class="card" id="queue-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-list-ol"></i> Próximos na Fila</h2>
+                        </div>
+                        <div class="queue-list-admin">
+                            <ul id="adminQueueList" class="custom-list">
+                                <li>(Fila vazia)</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Card: Adicionar Música -->
+                    <section class="card">
+                        <div class="card-header">
+                            <h2><i class="fa-brands fa-youtube"></i> Buscar e Adicionar</h2>
+                        </div>
+                        <p class="helper-text">Busque por nome ou artista e adicione à fila.</p>
+                        <div class="form-group row">
+                            <input type="text" id="adminVideoSearchInput" class="form-control" placeholder="Ex: Zeca Pagodinho...">
+                            <button id="searchVideoBtn" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        </div>
+                        <div id="adminSearchResults" class="search-results-container"></div>
+                    </section>
+
+                    <!-- Card: Histórico -->
+                    <section class="card">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Músicas</h2>
+                            <button id="refreshHistoryBtn" class="btn btn-secondary btn-sm"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+                        </div>
+                        <div class="queue-list-admin scrollable-list">
+                            <ul id="adminPlayHistory" class="custom-list text-sm">
+                                <li>(Nenhuma música registrada ainda)</li>
+                            </ul>
+                        </div>
+                    </section>
                 </div>
 
-                <!-- Card: Controle de Volume -->
-                <div class="card volume-card">
-                    <div class="card-header">
-                        <h2><i class="fa-solid fa-volume-high"></i> Controle de Volume</h2>
-                    </div>
-                    <div class="volume-content">
-                        <div class="volume-slider-container">
-                            <i class="fa-solid fa-volume-low text-muted"></i>
-                            <input type="range" id="volume-slider" min="0" max="100" value="85" class="slider">
-                            <i class="fa-solid fa-volume-high text-muted"></i>
+                <!-- COLUNA DIREITA -->
+                <div class="column">
+                    
+                    <!-- Card: Autoplay / Inatividade -->
+                    <section class="card full-height" id="autoplay-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-robot"></i> Lista de Inatividade (Autoplay)</h2>
                         </div>
-                        <div class="volume-status">
-                            Nível: <span id="volume-label">85%</span>
+                        <p class="helper-text">Músicas que tocam automaticamente quando não há pedidos de clientes.</p>
+                        
+                        <div class="form-group row">
+                            <input type="text" id="inactivitySearchInput" class="form-control" placeholder="Buscar vídeo para a lista...">
+                            <button id="inactivitySearchBtn" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
                         </div>
-                    </div>
-                </div>
-            </section>
+                        <div id="inactivitySearchResults" class="search-results-container"></div>
+                        
+                        <div class="form-group vertical" style="margin-top: 20px;">
+                            <label class="form-label">Fila Base (Autoplay)</label>
+                            <textarea id="inactivityList" class="form-control textarea" rows="12" placeholder="Os nomes dos vídeos adicionados aparecerão aqui..."></textarea>
+                            <button id="saveListBtn" class="btn btn-primary full-width"><i class="fa-solid fa-floppy-disk"></i> Salvar Lista</button>
+                        </div>
+                    </section>
 
-            <!-- Card: Seleção de Gênero/Playlist -->
-            <section class="recent-activity">
-                <div class="card table-card">
-                    <div class="card-header">
-                        <h2><i class="fa-solid fa-music"></i> Seleção de Repertório</h2>
-                        <button class="btn btn-primary" id="btn-update-playlist"><i class="fa-solid fa-rotate"></i> Aplicar Mudança</button>
-                    </div>
-                    <div class="playlist-selection">
-                        <label for="playlist-selector" class="form-label">Escolha o estilo musical principal para tocar agora:</label>
-                        <select id="playlist-selector" class="form-select">
-                            <option value="pagode">Pagode</option>
-                            <option value="sertanejo">Sertanejo Sofrência</option>
-                            <option value="piseiro">Piseiro</option>
-                            <option value="brega">Brega</option>
-                            <option value="variado">Mix Variado (Automático)</option>
-                        </select>
-                    </div>
+                    <!-- Card: Configurações do Sistema -->
+                    <section class="card" id="settings-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-gear"></i> Configurações do Sistema</h2>
+                        </div>
+                        
+                        <!-- Faixa Promocional -->
+                        <div class="settings-group">
+                            <label class="form-label"><i class="fa-solid fa-bullhorn"></i> Faixa Promocional na TV</label>
+                            <div class="form-group row">
+                                <input type="text" id="promoText" class="form-control" placeholder="Ex: Promoção! 3 Cervejas por R$ 10">
+                                <button id="savePromoBtn" class="btn btn-primary">Salvar</button>
+                            </div>
+                        </div>
+
+                        <hr class="divider">
+
+                        <!-- Tempo Máximo -->
+                        <div class="settings-group">
+                            <label class="form-label" for="maxPlaybackMinutesInput"><i class="fa-solid fa-stopwatch"></i> Tempo Máximo por Música (Minutos)</label>
+                            <div class="form-group row">
+                                <input type="number" id="maxPlaybackMinutesInput" class="form-control" min="1" max="30" value="5" style="max-width: 100px;">
+                                <button id="saveMaxPlaybackBtn" class="btn btn-primary">Salvar Tempo</button>
+                            </div>
+                        </div>
+
+                        <hr class="divider">
+
+                        <!-- Alterar Senha -->
+                        <div class="settings-group">
+                            <label class="form-label"><i class="fa-solid fa-shield-halved"></i> Alterar Senha Admin</label>
+                            <div class="form-group vertical password-form">
+                                <input type="password" id="currentAdminPassword" class="form-control" autocomplete="current-password" placeholder="Senha atual">
+                                <input type="password" id="newAdminPassword" class="form-control" autocomplete="new-password" placeholder="Nova senha (mínimo 8 caracteres)">
+                                <input type="password" id="confirmAdminPassword" class="form-control" autocomplete="new-password" placeholder="Confirmar nova senha">
+                                <button id="changeAdminPasswordBtn" class="btn btn-secondary full-width" type="button">Atualizar Senha</button>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-            </section>
+            </div>
         </main>
     </div>
 
-    <!-- Scripts do Sistema (Certifique-se de que seu admin.js capture os cliques dos IDs acima) -->
+    <!-- Scripts do Sistema -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <script src="js/admin.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registrado!', reg))
+                    .catch(err => console.log('SW falhou:', err));
+            });
+        }
+    </script>
 </body>
 </html>
