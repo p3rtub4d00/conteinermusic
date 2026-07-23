@@ -11,11 +11,7 @@
     --border-color: #e2e8f0;
     
     --success: #10b981;
-    --danger: #ef4444;
-    --purple: #8b5cf6;
-    
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 /* --- Resets e Tipografia --- */
@@ -35,7 +31,7 @@ body {
 a { text-decoration: none; }
 ul { list-style: none; }
 
-/* --- Estrutura Principal (Grid/Flex) --- */
+/* --- Estrutura Principal --- */
 .dashboard-container {
     display: flex;
     min-height: 100vh;
@@ -160,101 +156,163 @@ ul { list-style: none; }
     border: 1px solid var(--border-color);
 }
 
-/* --- Dashboard Stat Cards --- */
-.dashboard-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 24px;
-    margin-bottom: 32px;
-}
-
-.stat-card {
-    display: flex;
-    align-items: center;
-    padding: 24px;
-}
-
-.stat-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: white;
-    margin-right: 20px;
-}
-
-.bg-blue { background-color: var(--primary-color); }
-.bg-green { background-color: var(--success); }
-.bg-purple { background-color: var(--purple); }
-
-.stat-info h3 {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-    margin-bottom: 4px;
-}
-
-.stat-info .stat-value {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #0f172a;
-}
-
-/* --- Tabelas de Dados --- */
-.table-card {
-    padding: 24px;
-}
-
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .card-header h2 {
     font-size: 1.1rem;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.table-responsive {
-    overflow-x: auto;
+/* --- Player Sections --- */
+.player-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
 }
 
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
+.now-playing {
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
 }
 
-.data-table th {
-    padding: 12px 16px;
-    background-color: #f8fafc;
+.track-info h3 {
+    font-size: 1.4rem;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+
+.track-info p {
     color: var(--text-muted);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--border-color);
+    font-size: 1rem;
 }
 
-.data-table td {
-    padding: 16px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.9rem;
-    vertical-align: middle;
+.playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 24px;
 }
 
-.data-table tr:last-child td {
-    border-bottom: none;
+.btn-control {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: transform 0.1s, color 0.2s;
 }
 
-/* --- Badges e Botões --- */
+.btn-control:hover {
+    color: var(--primary-color);
+}
+
+.btn-control:active {
+    transform: scale(0.9);
+}
+
+.btn-control.play-pause {
+    font-size: 3.5rem;
+    color: var(--primary-color);
+}
+
+.btn-control.play-pause:hover {
+    color: var(--primary-hover);
+}
+
+/* --- Controle de Volume --- */
+.volume-content {
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: calc(100% - 65px);
+}
+
+.volume-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.volume-status {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+#volume-label {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* --- Seleção de Playlist --- */
+.playlist-selection {
+    padding: 24px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.form-select {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: #0f172a;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* --- Componentes Globais --- */
 .badge {
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 999px;
     font-size: 0.75rem;
     font-weight: 600;
@@ -265,13 +323,12 @@ ul { list-style: none; }
     color: #047857;
 }
 
-.status-offline {
-    background-color: #fee2e2;
-    color: #b91c1c;
+.text-muted {
+    color: var(--text-muted);
 }
 
 .btn {
-    padding: 8px 16px;
+    padding: 10px 18px;
     border: none;
     border-radius: 6px;
     font-weight: 500;
@@ -279,6 +336,9 @@ ul { list-style: none; }
     transition: background-color 0.2s;
     font-family: inherit;
     font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .btn-primary {
@@ -288,18 +348,4 @@ ul { list-style: none; }
 
 .btn-primary:hover {
     background-color: var(--primary-hover);
-}
-
-.btn-icon {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 1rem;
-    margin-right: 8px;
-    transition: color 0.2s;
-}
-
-.btn-icon:hover {
-    color: var(--primary-color);
 }
