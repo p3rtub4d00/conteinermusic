@@ -28,10 +28,18 @@ const adminPlayHistoryList = document.getElementById('adminPlayHistory');
 const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
+
+// Elementos Novos (Autoplay Modes)
+const autoplayModeSelect = document.getElementById('autoplayMode');
+const manualAutoplaySection = document.getElementById('manualAutoplaySection');
+const playlistAutoplaySection = document.getElementById('playlistAutoplaySection');
+const playlistLinkInput = document.getElementById('playlistLinkInput');
+const savePlaylistBtn = document.getElementById('savePlaylistBtn');
+
 let inactivityItems = [];
 let isSavingInactivityList = false;
 
-// --- ✨ NOVA FUNÇÃO: Toastify Helper (Igual ao main.js) ---
+// --- Toastify Helper ---
 function showToast(message, type = 'info') {
     let backgroundColor;
     if (type === 'error') backgroundColor = "linear-gradient(to right, #ff5f6d, #ffc371)";
@@ -50,10 +58,51 @@ function showToast(message, type = 'info') {
 }
 
 // -----------------
-// Eventos de Saída
+// Eventos de Saída (Client -> Server)
 // -----------------
 
-// 1. Salvar lista de inatividade
+// Lógica de Alternância: Modo Manual vs Playlist
+if (autoplayModeSelect) {
+    autoplayModeSelect.addEventListener('change', (e) => {
+        const mode = e.target.value;
+        if (mode === 'playlist') {
+            manualAutoplaySection.style.display = 'none';
+            playlistAutoplaySection.style.display = 'block';
+        } else {
+            manualAutoplaySection.style.display = 'block';
+            playlistAutoplaySection.style.display = 'none';
+        }
+        
+        socket.emit('admin:setAutoplayMode', mode);
+        showToast(`Modo alterado para: ${mode === 'playlist' ? 'Playlist Dinâmica' : 'Lista Manual'}`, 'info');
+    });
+}
+
+if (savePlaylistBtn) {
+    savePlaylistBtn.addEventListener('click', () => {
+        const link = playlistLinkInput.value.trim();
+        
+        if (!link || !link.includes('youtube.com/playlist?list=')) {
+            return showToast('Por favor, insira um link válido de uma Playlist do YouTube.', 'error');
+        }
+
+        savePlaylistBtn.disabled = true;
+        savePlaylistBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+
+        socket.emit('admin:savePlaylistLink', link, (response) => {
+            savePlaylistBtn.disabled = false;
+            savePlaylistBtn.innerHTML = '<i class="fa-solid fa-link"></i> Ativar Playlist';
+            
+            if (response && response.ok) {
+                showToast('Playlist configurada com sucesso!', 'success');
+            } else {
+                showToast('Erro ao salvar a playlist.', 'error');
+            }
+        });
+    });
+}
+
+// 1. Salvar lista de inatividade (Manual)
 if (saveListBtn) {
     saveListBtn.addEventListener('click', () => {
         if (isSavingInactivityList) return;
@@ -67,7 +116,7 @@ if (saveListBtn) {
 
         isSavingInactivityList = true;
         saveListBtn.disabled = true;
-        saveListBtn.textContent = 'Salvando...';
+        saveListBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
         socket.emit('admin:saveInactivityList', itemsToSave);
     });
 }
@@ -113,76 +162,63 @@ if (changeAdminPasswordBtn) {
     });
 }
 
-// 2. Buscar vídeo (Fila)
 if (searchVideoBtn) {
     searchVideoBtn.addEventListener('click', () => {
         const query = adminVideoSearchInput.value.trim();
-        // 🔄 SUBSTITUIÇÃO DE ALERT
         if (!query) return showToast('Por favor, digite um termo para buscar.', 'error');
-
         adminSearchResultsDiv.innerHTML = '<p>Buscando...</p>';
         socket.emit('admin:search', query);
     });
 }
 
-// Busca Lista Inatividade
 if (inactivitySearchBtn) {
     inactivitySearchBtn.addEventListener('click', () => {
         const query = inactivitySearchInput.value.trim();
-        // 🔄 SUBSTITUIÇÃO DE ALERT
         if (!query) return showToast('Digite algo para buscar.', 'error');
-
         inactivitySearchResultsDiv.innerHTML = '<p>Buscando...</p>';
         socket.emit('admin:searchForInactivityList', query); 
     });
 }
 
-// 3. Adicionar vídeo à fila
 if (adminSearchResultsDiv) {
     adminSearchResultsDiv.addEventListener('click', (e) => {
         if (e.target.classList.contains('add-result-btn')) {
             const videoId = e.target.dataset.id;
             const videoTitle = e.target.dataset.title; 
-
             if (videoId) {
                 socket.emit('admin:addVideo', { videoId: videoId, videoTitle: videoTitle }); 
                 adminVideoSearchInput.value = '';
                 adminSearchResultsDiv.innerHTML = '';
-                // 🔄 SUBSTITUIÇÃO DE ALERT
                 showToast(`"${videoTitle}" adicionado à fila!`, 'success');
             }
         }
     });
 }
 
-// Adicionar à lista de inatividade (UI apenas)
 if (inactivitySearchResultsDiv) {
     inactivitySearchResultsDiv.addEventListener('click', (e) => {
         if (e.target.classList.contains('add-inactivity-btn')) {
             const videoTitle = e.target.dataset.title;
             const videoId = e.target.dataset.id;
             if (videoTitle && inactivityListText) {
-                // O último texto pode não terminar com Enter. Garanta o
-                // separador antes de adicionar outro vídeo, para que dois
-                // títulos nunca virem uma única busca.
                 const separator = inactivityListText.value.trim().length > 0 ? '\n' : '';
                 inactivityListText.value += separator + videoTitle + '\n';
                 if (videoId) inactivityItems.push({ title: videoTitle, videoId });
                 inactivitySearchInput.value = '';
                 inactivitySearchResultsDiv.innerHTML = '';
-                showToast('Adicionado ao campo de texto. Clique em "Salvar Lista" para confirmar.', 'info');
+                showToast('Adicionado ao campo de texto. Clique em "Salvar Lista Manual" para confirmar.', 'info');
             }
         }
     });
 }
 
-// 4. Controles do Player
 if (pauseBtn) {
     pauseBtn.addEventListener('click', () => {
         socket.emit('admin:controlPause');
         showToast('Comando de Pausa/Play enviado.', 'info');
     });
 }
+
 if (skipBtn) {
     skipBtn.addEventListener('click', () => {
         if(confirm('Tem certeza que deseja pular a música atual?')) {
@@ -191,6 +227,7 @@ if (skipBtn) {
         }
     });
 }
+
 if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
         const volume = e.target.value;
@@ -211,12 +248,10 @@ if (saveMaxPlaybackBtn) {
     });
 }
 
-// 5. Salvar Texto Promo
 if (savePromoBtn) {
     savePromoBtn.addEventListener('click', () => {
         const text = promoTextInput.value.trim();
         socket.emit('admin:setPromoText', text);
-        // 🔄 SUBSTITUIÇÃO DE ALERT
         showToast('Texto da promoção atualizado na TV!', 'success');
     });
 }
@@ -229,7 +264,7 @@ if (refreshHistoryBtn) {
 }
 
 // -----------------
-// Eventos de Entrada
+// Eventos de Entrada (Server -> Client)
 // -----------------
 
 socket.on('connect', () => {
@@ -248,20 +283,31 @@ socket.on('admin:loadInactivityList', (nameArray) => {
   if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
 });
 
+// Receber configuração de Autoplay do Servidor
+socket.on('admin:loadAutoplayConfig', (config) => {
+    if (config.mode && autoplayModeSelect) {
+        autoplayModeSelect.value = config.mode;
+        autoplayModeSelect.dispatchEvent(new Event('change')); 
+    }
+    if (config.playlistLink && playlistLinkInput) {
+        playlistLinkInput.value = config.playlistLink;
+    }
+});
+
 socket.on('admin:inactivityListSaved', (result) => {
   isSavingInactivityList = false;
   if (saveListBtn) {
     saveListBtn.disabled = false;
-    saveListBtn.textContent = 'Salvar Lista';
+    saveListBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Lista Manual';
   }
   if (!result?.ok) return showToast(result?.error || 'Não foi possível salvar a lista.', 'error');
 
   inactivityItems = result.items || [];
   if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
   if (result.failedTitles?.length) {
-    showToast(`${result.saved} música(s) salva(s). Não encontradas: ${result.failedTitles.join(', ')}`, 'error');
+    showToast(`${result.saved} salva(s). Não encontradas: ${result.failedTitles.join(', ')}`, 'error');
   } else {
-    showToast(`${result.saved} música(s) salva(s) na lista de inatividade!`, 'success');
+    showToast(`${result.saved} música(s) salva(s) na lista manual!`, 'success');
   }
 });
 
@@ -306,7 +352,7 @@ socket.on('admin:updateVolume', (data) => {
 
 socket.on('admin:updateMaxPlaybackMinutes', (minutes) => {
   if (maxPlaybackMinutesInput) {
-    maxPlaybackMinutesInput.value = ``;
+    maxPlaybackMinutesInput.value = minutes;
   }
 });
 
@@ -363,18 +409,13 @@ socket.on('admin:playHistory', (history) => {
   }).join('');
 });
 
-// --------------------------------------------------------------------------
-// 🔽 Lógica de Instalação do PWA (Adicionado para funcionar como App) 🔽
-// --------------------------------------------------------------------------
+// PWA Logic
 let deferredPrompt;
 const installBtn = document.getElementById('installAppBtn');
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // Previne que o Chrome mostre o prompt nativo automaticamente (opcional)
   e.preventDefault();
-  // Guarda o evento para usar depois
   deferredPrompt = e;
-  // Mostra o botão de instalar
   if (installBtn) installBtn.style.display = 'block';
 });
 
@@ -385,7 +426,6 @@ if (installBtn) {
       const { outcome } = await deferredPrompt.userChoice;
       console.log(`User response to the install prompt: ${outcome}`);
       deferredPrompt = null;
-      // Esconde o botão após instalar
       installBtn.style.display = 'none';
     }
   });
