@@ -286,3 +286,42 @@ ul { list-style: none; }
     .sidebar-nav { padding: 12px 0; }
     .main-content { padding: 16px; }
 }
+/* --- Correção de Altura das Listas e Customização do Scroll --- */
+
+/* Trava a altura da Fila de Reprodução e do Histórico */
+.queue-list-admin {
+    max-height: 350px;  /* Altura máxima antes de criar o scroll */
+    overflow-y: auto;   /* Cria a barra de rolagem automaticamente */
+    padding-right: 8px; /* Dá um respiro para o texto não colar na barra */
+}
+
+/* Estilização Premium da Barra de Rolagem (Padrão Webkit) */
+.queue-list-admin::-webkit-scrollbar,
+.search-results-container::-webkit-scrollbar,
+.textarea::-webkit-scrollbar,
+.main-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.queue-list-admin::-webkit-scrollbar-track,
+.search-results-container::-webkit-scrollbar-track,
+.textarea::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track {
+    background: var(--bg-main);
+    border-radius: 4px;
+}
+
+.queue-list-admin::-webkit-scrollbar-thumb,
+.search-results-container::-webkit-scrollbar-thumb,
+.textarea::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.queue-list-admin::-webkit-scrollbar-thumb:hover,
+.search-results-container::-webkit-scrollbar-thumb:hover,
+.textarea::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
