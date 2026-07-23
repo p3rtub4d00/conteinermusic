@@ -29,12 +29,10 @@ const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
 
-// Elementos Novos (Autoplay Modes)
+// Elementos de Autoplay Modes
 const autoplayModeSelect = document.getElementById('autoplayMode');
 const manualAutoplaySection = document.getElementById('manualAutoplaySection');
 const playlistAutoplaySection = document.getElementById('playlistAutoplaySection');
-const playlistLinkInput = document.getElementById('playlistLinkInput');
-const savePlaylistBtn = document.getElementById('savePlaylistBtn');
 
 let inactivityItems = [];
 let isSavingInactivityList = false;
@@ -78,29 +76,29 @@ if (autoplayModeSelect) {
     });
 }
 
-if (savePlaylistBtn) {
-    savePlaylistBtn.addEventListener('click', () => {
-        const link = playlistLinkInput.value.trim();
-        
-        if (!link || !link.includes('youtube.com/playlist?list=')) {
-            return showToast('Por favor, insira um link válido de uma Playlist do YouTube.', 'error');
-        }
+// --- Seleção Rápida de Gêneros por Botão (1 Clique) ---
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.genre-select-btn');
+    if (btn) {
+        const link = btn.dataset.link;
+        const genreName = btn.textContent.trim();
 
-        savePlaylistBtn.disabled = true;
-        savePlaylistBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+        document.querySelectorAll('.genre-select-btn').forEach(b => {
+            b.style.opacity = '0.7';
+            b.style.transform = 'scale(1)';
+        });
+        btn.style.opacity = '1';
+        btn.style.transform = 'scale(1.02)';
 
         socket.emit('admin:savePlaylistLink', link, (response) => {
-            savePlaylistBtn.disabled = false;
-            savePlaylistBtn.innerHTML = '<i class="fa-solid fa-link"></i> Ativar Playlist';
-            
             if (response && response.ok) {
-                showToast('Playlist configurada com sucesso!', 'success');
+                showToast(`Autoplay ativado: ${genreName}!`, 'success');
             } else {
-                showToast('Erro ao salvar a playlist.', 'error');
+                showToast('Erro ao ativar o gênero.', 'error');
             }
         });
-    });
-}
+    }
+});
 
 // 1. Salvar lista de inatividade (Manual)
 if (saveListBtn) {
@@ -283,14 +281,10 @@ socket.on('admin:loadInactivityList', (nameArray) => {
   if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
 });
 
-// Receber configuração de Autoplay do Servidor
 socket.on('admin:loadAutoplayConfig', (config) => {
     if (config.mode && autoplayModeSelect) {
         autoplayModeSelect.value = config.mode;
         autoplayModeSelect.dispatchEvent(new Event('change')); 
-    }
-    if (config.playlistLink && playlistLinkInput) {
-        playlistLinkInput.value = config.playlistLink;
     }
 });
 
