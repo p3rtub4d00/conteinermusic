@@ -133,20 +133,42 @@
                     <!-- Card: Autoplay / Inatividade -->
                     <section class="card full-height" id="autoplay-section">
                         <div class="card-header">
-                            <h2><i class="fa-solid fa-robot"></i> Lista de Inatividade (Autoplay)</h2>
+                            <h2><i class="fa-solid fa-robot"></i> Inteligência de Inatividade (Autoplay)</h2>
                         </div>
-                        <p class="helper-text">Músicas que tocam automaticamente quando não há pedidos de clientes.</p>
+                        <p class="helper-text">Defina o que o sistema deve tocar quando não houver pedidos na fila.</p>
                         
-                        <div class="form-group row">
-                            <input type="text" id="inactivitySearchInput" class="form-control" placeholder="Buscar vídeo para a lista...">
-                            <button id="inactivitySearchBtn" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        <!-- Seletor de Modo -->
+                        <div class="settings-group" style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+                            <label class="form-label">Modo de Operação</label>
+                            <select id="autoplayMode" class="form-control">
+                                <option value="manual">Lista Manual (Músicas Específicas)</option>
+                                <option value="playlist">Playlist Dinâmica (Link do YouTube)</option>
+                            </select>
                         </div>
-                        <div id="inactivitySearchResults" class="search-results-container"></div>
-                        
-                        <div class="form-group vertical" style="margin-top: 20px;">
-                            <label class="form-label">Fila Base (Autoplay)</label>
-                            <textarea id="inactivityList" class="form-control textarea" rows="12" placeholder="Os nomes dos vídeos adicionados aparecerão aqui..."></textarea>
-                            <button id="saveListBtn" class="btn btn-primary full-width"><i class="fa-solid fa-floppy-disk"></i> Salvar Lista</button>
+
+                        <!-- MODO 1: Lista Manual (Oculto se Playlist for selecionada) -->
+                        <div id="manualAutoplaySection">
+                            <div class="form-group row">
+                                <input type="text" id="inactivitySearchInput" class="form-control" placeholder="Buscar vídeo para a lista...">
+                                <button id="inactivitySearchBtn" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+                            </div>
+                            <div id="inactivitySearchResults" class="search-results-container"></div>
+                            
+                            <div class="form-group vertical" style="margin-top: 20px;">
+                                <label class="form-label">Fila Base (Autoplay)</label>
+                                <textarea id="inactivityList" class="form-control textarea" rows="8" placeholder="Os nomes dos vídeos adicionados aparecerão aqui..."></textarea>
+                                <button id="saveListBtn" class="btn btn-primary full-width"><i class="fa-solid fa-floppy-disk"></i> Salvar Lista Manual</button>
+                            </div>
+                        </div>
+
+                        <!-- MODO 2: Playlist do YouTube (Oculto por padrão) -->
+                        <div id="playlistAutoplaySection" style="display: none;">
+                            <div class="form-group vertical">
+                                <label class="form-label">Link da Playlist Oficial (YouTube)</label>
+                                <p class="helper-text" style="font-size: 0.8rem;">Cole o link completo de uma playlist. O sistema sorteará músicas de lá automaticamente, respeitando o limite de tempo máximo.</p>
+                                <input type="text" id="playlistLinkInput" class="form-control" placeholder="Ex: https://youtube.com/playlist?list=PL...">
+                                <button id="savePlaylistBtn" class="btn btn-primary full-width" style="margin-top: 12px;"><i class="fa-solid fa-link"></i> Ativar Playlist</button>
+                            </div>
                         </div>
                     </section>
 
@@ -170,6 +192,7 @@
                         <!-- Tempo Máximo -->
                         <div class="settings-group">
                             <label class="form-label" for="maxPlaybackMinutesInput"><i class="fa-solid fa-stopwatch"></i> Tempo Máximo por Música (Minutos)</label>
+                            <p class="helper-text" style="font-size: 0.8rem;">Isso impede que clientes coloquem shows inteiros e também filtra as playlists automáticas.</p>
                             <div class="form-group row">
                                 <input type="number" id="maxPlaybackMinutesInput" class="form-control" min="1" max="30" value="5" style="max-width: 100px;">
                                 <button id="saveMaxPlaybackBtn" class="btn btn-primary">Salvar Tempo</button>
