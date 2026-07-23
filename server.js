@@ -30,7 +30,8 @@ const ConfigSchema = new mongoose.Schema({
   adminPasswordChangedAt: Date,
   maxPlaybackMinutes: { type: Number, default: 5 },
   autoplayMode: { type: String, default: 'manual' }, // 'manual' ou 'playlist'
-  playlistLink: { type: String, default: '' } // Termo ou link de busca
+  playlistLink: { type: String, default: '' }, // Termo ou link de busca
+  blockedKeywords: { type: [String], default: [] } // Lista de palavras/termos proibidos
 });
 const ConfigModel = mongoose.model('Config', ConfigSchema);
 
@@ -192,7 +193,7 @@ const mpClient = new MercadoPagoConfig({
 // --- Variáveis de Estado em Memória ---
 const INACTIVITY_TIMEOUT = 5000;
 let inactivityTimer = null;
-let customerPlaybackTimer = null; // Timer específico para limitar apenas músicas pagas por clientes
+let customerPlaybackTimer = null; 
 let nowPlayingInfo = null;
 let isCustomerPlaying = false;
 let isAdvancingQueue = false;
@@ -215,17 +216,37 @@ async function getConfig() {
       isMuted: true,
       maxPlaybackMinutes: 5,
       autoplayMode: 'manual',
-      playlistLink: ''
+      playlistLink: '',
+      blockedKeywords: []
     };
+  }
+}
+
+// --- Função de Filtro de Palavras Proibidas ---
+async function isTitleBlocked(title) {
+  if (!title) return false;
+  try {
+    const config = await getConfig();
+    if (!config.blockedKeywords || config.blockedKeywords.length === 0) return false;
+    const lowerTitle = title.toLowerCase();
+    return config.blockedKeywords.some(keyword => {
+      const kw = keyword.toLowerCase().trim();
+      return kw.length > 0 && lowerTitle.includes(kw);
+    });
+  } catch (e) {
+    return false;
   }
 }
 
 async function fetchVideoIdByName(name) {
   if (!name) return null;
   try {
+    if (await isTitleBlocked(name)) return null;
     const result = await youtubeSearchApi.GetListByKeyword(name, false, 1);
     if (result && result.items && result.items.length > 0 && result.items[0].id) {
-      return result.items[0].id;
+      const video = result.items[0];
+      if (await isTitleBlocked(video.title)) return null;
+      return video.id;
     }
     return null;
   } catch (err) {
@@ -266,7 +287,6 @@ async function playNextInQueue() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   inactivityTimer = null;
 
-  // Limpa o timer de limite de tempo da música anterior (se houver)
   if (customerPlaybackTimer) {
     clearTimeout(customerPlaybackTimer);
     customerPlaybackTimer = null;
@@ -319,7 +339,6 @@ async function playNextInQueue() {
         isCustomerPlaying = nowPlayingInfo.isCustomer;
         console.log(`[Server] Tocando: ${nowPlayingInfo.title} | É cliente? ${isCustomerPlaying}`);
         
-        // --- APLICAÇÃO DO LIMITADOR APENAS PARA CLIENTES ---
         if (isCustomerPlaying) {
           const config = await getConfig();
           const maxMinutes = config.maxPlaybackMinutes || 5;
@@ -370,14 +389,18 @@ async function startInactivityTimer() {
 
       const config = await getConfig();
 
-      // --- MODO 1: PLAYLIST DINÂMICA VIA BUSCA ESTÁVEL ---
       if (config.autoplayMode === 'playlist' && config.playlistLink) {
           console.log(`[Server] Buscando música automática por termo: ${config.playlistLink}`);
           try {
-              const searchResult = await youtubeSearchApi.GetListByKeyword(config.playlistLink, false, 10);
+              const searchResult = await youtubeSearchApi.GetListByKeyword(config.playlistLink, false, 15);
               
               if (searchResult && searchResult.items && searchResult.items.length > 0) {
-                  const validVideos = searchResult.items.filter(item => item.id && item.title);
+                  const validVideos = [];
+                  for (const item of searchResult.items) {
+                      if (item.id && item.title && !(await isTitleBlocked(item.title))) {
+                          validVideos.push(item);
+                      }
+                  }
 
                   if (validVideos.length > 0) {
                       const randomVideo = validVideos[Math.floor(Math.random() * validVideos.length)];
@@ -399,20 +422,28 @@ async function startInactivityTimer() {
           }
       }
 
-      // --- MODO 2: LISTA MANUAL (Fallback Original) ---
       const inactivitySongs = await InactivityModel.find({}).lean(); 
       if (inactivitySongs.length > 0) {
         console.log('[Server] Inatividade detectada. Carregando lista manual do banco.');
-        const itemsToInsert = inactivitySongs.map(song => ({
-          videoId: song.videoId,
-          title: song.title || '(Música da Casa)', 
-          isCustomer: false,
-          message: null,
-          priority: 0 
-        }));
+        const itemsToInsert = [];
+        for (const song of inactivitySongs) {
+            if (!(await isTitleBlocked(song.title))) {
+                itemsToInsert.push({
+                  videoId: song.videoId,
+                  title: song.title || '(Música da Casa)', 
+                  isCustomer: false,
+                  message: null,
+                  priority: 0 
+                });
+            }
+        }
 
-        await QueueModel.insertMany(itemsToInsert);
-        playNextInQueue();
+        if (itemsToInsert.length > 0) {
+            await QueueModel.insertMany(itemsToInsert);
+            playNextInQueue();
+        } else {
+            broadcastPlayerState();
+        }
       } else {
         console.log('[Server] Inatividade, mas banco de inatividade está vazio.');
         broadcastPlayerState();
@@ -469,16 +500,21 @@ app.get("/search", async (req, res) => {
         return res.json({ ok: true, results: cachedEntry.results });
     }
 
-    const result = await youtubeSearchApi.GetListByKeyword(query, false, 6);
+    const result = await youtubeSearchApi.GetListByKeyword(query, false, 8);
     
-    const items = result.items
-      .filter(item => item.id && item.title)
-      .map(item => ({
-        id: item.id,
-        title: item.title,
-        channel: item.channel?.name ?? 'Canal Indefinido',
-        thumbnail: item.thumbnail?.thumbnails?.[0]?.url || ''
-      }));
+    const items = [];
+    for (const item of result.items) {
+      if (item.id && item.title) {
+        if (!(await isTitleBlocked(item.title))) {
+          items.push({
+            id: item.id,
+            title: item.title,
+            channel: item.channel?.name ?? 'Canal Indefinido',
+            thumbnail: item.thumbnail?.thumbnails?.[0]?.url || ''
+          });
+        }
+      }
+    }
 
     if (items.length > 0) {
         await SearchCacheModel.create({ term: lowerQuery, results: items });
@@ -495,6 +531,13 @@ app.post("/create-payment", async (req, res) => {
   try {
     const { videos, amount, description, message, socketId, userPhone } = req.body;
     if (!videos || !amount || !socketId) return res.status(400).json({ ok: false, error: "Dados inválidos." });
+
+    // Valida se algum vídeo contém palavra bloqueada antes de cobrar
+    for (const v of videos) {
+        if (await isTitleBlocked(v.title)) {
+            return res.status(400).json({ ok: false, error: `A música "${v.title}" não é permitida pelo estabelecimento.` });
+        }
+    }
 
     const notification_url = "https://conteinermusic.onrender.com/webhook"; 
 
@@ -586,19 +629,23 @@ app.post("/webhook", async (req, res) => {
         if (inactivityTimer) clearTimeout(inactivityTimer);
         inactivityTimer = null;
 
-        const customerVideos = dbPayment.videos.map(v => ({
-          videoId: v.id, 
-          title: v.title, 
-          isCustomer: true, 
-          message: dbPayment.message,
-          userPhone: dbPayment.userPhone || null,
-          mpPaymentId: dbPayment.mpPaymentId || null,
-          priority: 1 
-        }));
-
-        await QueueModel.insertMany(customerVideos);
+        const customerVideos = [];
+        for (const v of dbPayment.videos) {
+            if (!(await isTitleBlocked(v.title))) {
+                customerVideos.push({
+                  videoId: v.id, 
+                  title: v.title, 
+                  isCustomer: true, 
+                  message: dbPayment.message,
+                  userPhone: dbPayment.userPhone || null,
+                  mpPaymentId: dbPayment.mpPaymentId || null,
+                  priority: 1 
+                });
+            }
+        }
 
         if (customerVideos.length > 0) {
+            await QueueModel.insertMany(customerVideos);
             io.emit('player:newOrderNotification', { title: customerVideos[0].title });
         }
 
@@ -655,7 +702,6 @@ io.on("connection", async (socket) => {
 
   socket.on('player:videoEnded', () => playNextInQueue());
   socket.on('player:ping', () => {
-    console.log(`[Ping] Keep-alive: ${socket.id}`);
     socket.emit('player:pong', { ts: Date.now() });
   });
 
@@ -664,7 +710,6 @@ io.on("connection", async (socket) => {
   });
 
   socket.on('admin:getList', async () => {
-    console.log(`[Admin] Carregando dados para: ${socket.id}`);
     try {
         const [freshConfig, inactivityList, queue, playHistory] = await Promise.all([
             getConfig(),
@@ -686,6 +731,7 @@ io.on("connection", async (socket) => {
             playlistLink: freshConfig.playlistLink 
         });
         socket.emit('admin:updateMaxPlaybackMinutes', freshConfig.maxPlaybackMinutes);
+        socket.emit('admin:loadBlockedKeywords', freshConfig.blockedKeywords || []);
 
         const formattedQueue = queue.map(item => ({ 
             id: item.videoId, 
@@ -705,7 +751,6 @@ io.on("connection", async (socket) => {
       const playHistory = await PlayHistoryModel.find({}).sort({ playedAt: -1 }).limit(100).lean();
       socket.emit('admin:playHistory', playHistory);
     } catch (e) {
-      console.error('[Admin] Erro ao carregar histórico de reprodução:', e);
       socket.emit('admin:playHistory', []);
     }
   });
@@ -716,16 +761,13 @@ io.on("connection", async (socket) => {
       config.dailyRevenue = 0;
       await config.save();
       io.emit('admin:updateRevenue', config.dailyRevenue);
-      console.log(`[Admin] Faturamento zerado por: ${socket.id}`);
       if (typeof callback === 'function') callback({ ok: true });
     } catch (error) {
-      console.error('[Admin] Erro ao zerar faturamento:', error);
       if (typeof callback === 'function') callback({ ok: false });
     }
   });
 
   socket.on('admin:saveInactivityList', async (itemArray, callback) => {
-    console.log('[Admin] Salvando lista manual...');
     const newItems = [];
     const failedTitles = [];
     const items = Array.isArray(itemArray) ? itemArray : [];
@@ -733,7 +775,7 @@ io.on("connection", async (socket) => {
     try {
         for (const item of items) {
             const name = typeof item === 'string' ? item.trim() : String(item?.title || '').trim();
-            if (name.length > 0) {
+            if (name.length > 0 && !(await isTitleBlocked(name))) {
                 const id = typeof item === 'object' && item.videoId ? item.videoId : await fetchVideoIdByName(name);
                 if (id) {
                   newItems.push({ title: name, videoId: id });
@@ -747,7 +789,6 @@ io.on("connection", async (socket) => {
         if (newItems.length > 0) {
             await InactivityModel.insertMany(newItems); 
         }
-        console.log(`[Admin] Lista manual salva: ${newItems.length} itens.`);
 
         if (!isCustomerPlaying && !nowPlayingInfo) startInactivityTimer();
         const result = { ok: true, saved: newItems.length, failedTitles, items: newItems };
@@ -755,7 +796,6 @@ io.on("connection", async (socket) => {
         if (typeof callback === 'function') callback(result);
 
     } catch (err) {
-        console.error('[Admin] Erro ao salvar lista:', err);
         const result = { ok: false, error: 'Não foi possível salvar a lista.' };
         socket.emit('admin:inactivityListSaved', result);
         if (typeof callback === 'function') callback(result);
@@ -764,22 +804,39 @@ io.on("connection", async (socket) => {
 
   socket.on('admin:searchForInactivityList', async (query) => {
       try {
+        if (await isTitleBlocked(query)) {
+            return socket.emit('admin:inactivitySearchResults', []);
+        }
         const result = await youtubeSearchApi.GetListByKeyword(query, false, 5);
-        const items = result.items.map(i => ({ id: i.id, title: i.title, channel: i.channel?.name }));
+        const items = [];
+        for (const i of result.items) {
+            if (!(await isTitleBlocked(i.title))) {
+                items.push({ id: i.id, title: i.title, channel: i.channel?.name });
+            }
+        }
         socket.emit('admin:inactivitySearchResults', items);
       } catch(e) { socket.emit('admin:inactivitySearchResults', []); }
   });
 
   socket.on('admin:search', async (query) => {
       try {
+        if (await isTitleBlocked(query)) {
+            return socket.emit('admin:searchResults', []);
+        }
         const result = await youtubeSearchApi.GetListByKeyword(query, false, 5);
-        const items = result.items.map(i => ({ id: i.id, title: i.title, channel: i.channel?.name }));
+        const items = [];
+        for (const i of result.items) {
+            if (!(await isTitleBlocked(i.title))) {
+                items.push({ id: i.id, title: i.title, channel: i.channel?.name });
+            }
+        }
         socket.emit('admin:searchResults', items);
       } catch(e) { socket.emit('admin:searchResults', []); }
   });
 
   socket.on('admin:addVideo', async ({ videoId, videoTitle }) => {
     if (videoId) {
+      if (await isTitleBlocked(videoTitle)) return;
       try {
           await QueueModel.create({
               videoId: videoId,
@@ -790,7 +847,7 @@ io.on("connection", async (socket) => {
           });
           if (!nowPlayingInfo) playNextInQueue();
           else broadcastPlayerState();
-      } catch(e) { console.error(e); }
+      } catch(e) {}
     }
   });
 
@@ -798,7 +855,6 @@ io.on("connection", async (socket) => {
       const config = await getConfig();
       config.autoplayMode = mode;
       await config.save();
-      console.log(`[Admin] Modo Autoplay alterado para: ${mode}`);
   });
 
   socket.on('admin:savePlaylistLink', async (link, callback) => {
@@ -806,7 +862,6 @@ io.on("connection", async (socket) => {
       config.playlistLink = link;
       config.autoplayMode = 'playlist';
       await config.save();
-      console.log(`[Admin] Gênero/Termo de autoplay salvo.`);
       
       await QueueModel.deleteMany({ priority: 0 });
 
@@ -824,7 +879,24 @@ io.on("connection", async (socket) => {
       const config = await getConfig();
       config.maxPlaybackMinutes = minutes;
       await config.save();
-      console.log(`[Admin] Tempo máximo alterado para ${minutes} min`);
+  });
+
+  // --- Gerenciamento de Palavras Bloqueadas via Admin ---
+  socket.on('admin:saveBlockedKeywords', async (keywordsArray, callback) => {
+      try {
+          const config = await getConfig();
+          const cleanKeywords = Array.isArray(keywordsArray) 
+              ? keywordsArray.map(k => String(k).trim()).filter(k => k.length > 0)
+              : [];
+          
+          config.blockedKeywords = cleanKeywords;
+          await config.save();
+
+          io.emit('admin:loadBlockedKeywords', cleanKeywords);
+          if (typeof callback === 'function') callback({ ok: true, keywords: cleanKeywords });
+      } catch (err) {
+          if (typeof callback === 'function') callback({ ok: false, error: 'Erro ao salvar palavras bloqueadas.' });
+      }
   });
 
   socket.on('admin:setPromoText', async (text) => {
