@@ -28,12 +28,18 @@ const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
 
+// Elementos do Filtro
+const blockedKeywordInput = document.getElementById('blockedKeywordInput');
+const addBlockedKeywordBtn = document.getElementById('addBlockedKeywordBtn');
+const blockedKeywordsListContainer = document.getElementById('blockedKeywordsListContainer');
+
 const autoplayModeSelect = document.getElementById('autoplayMode');
 const manualAutoplaySection = document.getElementById('manualAutoplaySection');
 const playlistAutoplaySection = document.getElementById('playlistAutoplaySection');
 
 let inactivityItems = [];
 let isSavingInactivityList = false;
+let currentBlockedKeywords = [];
 
 function showToast(message, type = 'info') {
     let backgroundColor;
@@ -90,6 +96,42 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// --- Lógica de Adicionar/Remover Termos Bloqueados ---
+if (addBlockedKeywordBtn) {
+    addBlockedKeywordBtn.addEventListener('click', () => {
+        const term = blockedKeywordInput.value.trim();
+        if (!term) return showToast('Digite um termo para bloquear.', 'error');
+        if (currentBlockedKeywords.includes(term)) return showToast('Este termo já está bloqueado.', 'error');
+
+        const updated = [...currentBlockedKeywords, term];
+        socket.emit('admin:saveBlockedKeywords', updated, (res) => {
+            if (res && res.ok) {
+                blockedKeywordInput.value = '';
+                showToast(`Termo "${term}" bloqueado com sucesso!`, 'success');
+            } else {
+                showToast('Erro ao salvar termo bloqueado.', 'error');
+            }
+        });
+    });
+}
+
+if (blockedKeywordsListContainer) {
+    blockedKeywordsListContainer.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.remove-blocked-btn');
+        if (removeBtn) {
+            const termToRemove = removeBtn.dataset.term;
+            const updated = currentBlockedKeywords.filter(k => k !== termToRemove);
+            socket.emit('admin:saveBlockedKeywords', updated, (res) => {
+                if (res && res.ok) {
+                    showToast(`Termo "${termToRemove}" removido do bloqueio.`, 'info');
+                } else {
+                    showToast('Erro ao atualizar bloqueios.', 'error');
+                }
+            });
+        }
+    });
+}
+
 if (saveListBtn) {
     saveListBtn.addEventListener('click', () => {
         if (isSavingInactivityList) return;
@@ -138,7 +180,7 @@ if (changeAdminPasswordBtn) {
             const result = await response.json();
             if (!result?.ok) throw new Error(result?.error || 'Erro ao alterar senha.');
             currentAdminPasswordInput.value = '';
-            newAdminPasswordInput.value = '';
+            newPasswordInput.value = '';
             confirmAdminPasswordInput.value = '';
             showToast('Senha alterada com sucesso!', 'success');
         } catch (error) {
@@ -254,6 +296,24 @@ socket.on('admin:loadAutoplayConfig', (config) => {
         autoplayModeSelect.value = config.mode;
         autoplayModeSelect.dispatchEvent(new Event('change')); 
     }
+});
+
+// Renderiza a lista de termos bloqueados na interface do admin
+socket.on('admin:loadBlockedKeywords', (keywords) => {
+    currentBlockedKeywords = keywords || [];
+    if (!blockedKeywordsListContainer) return;
+
+    if (currentBlockedKeywords.length === 0) {
+        blockedKeywordsListContainer.innerHTML = '<span style="font-size: 0.85rem; color: #666;">Nenhum termo bloqueado.</span>';
+        return;
+    }
+
+    blockedKeywordsListContainer.innerHTML = currentBlockedKeywords.map(term => `
+        <span style="background: #e2e8f0; color: #1e293b; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+            ${term}
+            <button class="remove-blocked-btn" data-term="${term}" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.9rem;" title="Remover bloqueio"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+    `).join('');
 });
 
 socket.on('admin:inactivityListSaved', (result) => {
