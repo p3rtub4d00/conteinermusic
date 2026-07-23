@@ -1,139 +1,151 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#1a1a1a">
-  <title>Admin - Contêiner Music Box</title>
-  
-  <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/images/logo.png">
-  
-  <link rel="stylesheet" href="/css/admin.css">
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle | Conteiner Music</title>
+    <!-- CSS Customizado -->
+    <link rel="stylesheet" href="css/admin.css">
+    <!-- Fonte Inter (Google Fonts) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  
-  <div class="container">
-    <header>
-      <img src="/images/logo.png" alt="Logo" id="logo">
-      <h1>Painel Admin</h1>
-      <button id="installAppBtn" style="display: none; margin: 10px auto; background-color: #28a745;">📲 Instalar App</button>
-    </header>
+    <div class="dashboard-container">
+        <!-- Menu Lateral (Sidebar) -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="images/logo.png" alt="Conteiner Music" class="logo-img" onerror="this.src='https://via.placeholder.com/150x40?text=CONTEINER+MUSIC'">
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul class="nav-list">
+                    <li class="nav-item active">
+                        <a href="#" class="nav-link"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link"><i class="fa-solid fa-store"></i> Estabelecimentos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link"><i class="fa-solid fa-mobile-screen"></i> Players & Dispositivos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link"><i class="fa-solid fa-music"></i> Gestão de Playlists</a>
+                    </li>
+                </ul>
 
-    <main>
-      <div class="column-layout">
-        <div class="column">
-          <section class="card">
-            <h2>Faturamento do Dia</h2>
-            <p class="revenue">R$ <span id="revenue">0.00</span></p>
-            <button id="resetRevenueBtn" class="control-btn" type="button">Zerar Faturamento</button>
-            <small>*Rastreado por pagamentos confirmados. Persistente no banco de dados.</small>
-          </section>
+                <div class="nav-divider"></div>
 
-          <section class="card">
-            <h2>Alterar Senha do Admin</h2>
-            <div class="form-group vertical password-form">
-              <input type="password" id="currentAdminPassword" autocomplete="current-password" placeholder="Senha atual">
-              <input type="password" id="newAdminPassword" autocomplete="new-password" placeholder="Nova senha (mínimo 8 caracteres)">
-              <input type="password" id="confirmAdminPassword" autocomplete="new-password" placeholder="Confirmar nova senha">
-              <button id="changeAdminPasswordBtn" class="control-btn" type="button">Alterar Senha</button>
-            </div>
-          </section>
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link"><i class="fa-solid fa-gear"></i> Configurações</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link text-danger"><i class="fa-solid fa-right-from-bracket"></i> Sair do Sistema</a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
 
-          <section class="card">
-            <h2>Controle do Player</h2>
-            <div class="player-controls">
-              <button id="pauseBtn" class="control-btn">Pausar / Tocar</button>
-              <button id="skipBtn" class="control-btn">Pular Música</button>
-            </div>
-            <div class="volume-control">
-              <label for="volumeSlider">Volume:</label>
-              <input type="range" id="volumeSlider" min="0" max="100" value="50">
-              <span id="volumeValue">50%</span>
-            </div>
-            <div class="volume-control" style="margin-top: 10px;">
-              <label for="maxPlaybackMinutesInput">Tempo máximo por música:</label>
-              <input type="number" id="maxPlaybackMinutesInput" min="1" max="30" value="5" style="width: 70px;">
-              <span>min</span>
-              <button id="saveMaxPlaybackBtn" class="control-btn" type="button">Salvar Tempo</button>
-            </div>
-          </section>
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-title">
+                    <h1>Visão Geral do Sistema</h1>
+                    <p class="subtitle">Bem-vindo ao painel de gerenciamento de streaming de áudio comercial.</p>
+                </div>
+                <div class="user-profile">
+                    <span class="user-name">Administrador</span>
+                    <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                </div>
+            </header>
 
-          <section class="card" id="queue-card">
-            <h2>Fila de Reprodução</h2>
-            <div class="now-playing-admin">
-              <strong>Tocando Agora:</strong>
-              <span id="adminNowPlaying">Nenhuma música tocando...</span>
-              <span id="adminNowPlayingMessage" class="playing-message"></span> 
-            </div>
-            <div class="queue-list-admin">
-              <strong>Próximos na Fila:</strong>
-              <ul id="adminQueueList"><li>(Fila vazia)</li></ul>
-            </div>
-          </section>
+            <section class="dashboard-cards">
+                <div class="card stat-card">
+                    <div class="stat-icon bg-blue"><i class="fa-solid fa-tower-broadcast"></i></div>
+                    <div class="stat-info">
+                        <h3>Players Ativos</h3>
+                        <p class="stat-value">24</p>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon bg-green"><i class="fa-solid fa-check-circle"></i></div>
+                    <div class="stat-info">
+                        <h3>Estabelecimentos Online</h3>
+                        <p class="stat-value">18</p>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon bg-purple"><i class="fa-solid fa-compact-disc"></i></div>
+                    <div class="stat-info">
+                        <h3>Faixas em Reprodução</h3>
+                        <p class="stat-value">12</p>
+                    </div>
+                </div>
+            </section>
 
-          <section class="card" id="history-card">
-            <h2>Histórico de Músicas Tocadas</h2>
-            <div class="player-controls" style="margin-bottom: 10px;">
-              <button id="refreshHistoryBtn" class="control-btn">Atualizar Histórico</button>
-            </div>
-            <div class="queue-list-admin">
-              <ul id="adminPlayHistory"><li>(Nenhuma música registrada ainda)</li></ul>
-            </div>
-          </section>
-        </div>
+            <section class="recent-activity">
+                <div class="card table-card">
+                    <div class="card-header">
+                        <h2>Monitoramento de Players em Tempo Real</h2>
+                        <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Novo Player</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Estabelecimento</th>
+                                    <th>Dispositivo (Zona)</th>
+                                    <th>Playlist Atual</th>
+                                    <th>Volume</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge status-online">Online</span></td>
+                                    <td>Bar Central</td>
+                                    <td>Tablet Balcão (Zona 1)</td>
+                                    <td>Sexta Animada</td>
+                                    <td>85%</td>
+                                    <td>
+                                        <button class="btn-icon" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                        <button class="btn-icon" title="Pausar"><i class="fa-solid fa-pause"></i></button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge status-online">Online</span></td>
+                                    <td>Lounge Premium</td>
+                                    <td>Web Player (Zona Única)</td>
+                                    <td>Ambiente Fim de Tarde</td>
+                                    <td>60%</td>
+                                    <td>
+                                        <button class="btn-icon" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                        <button class="btn-icon" title="Pausar"><i class="fa-solid fa-pause"></i></button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge status-offline">Offline</span></td>
+                                    <td>Restaurante Sabor</td>
+                                    <td>Android TV (Salão)</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>
+                                        <button class="btn-icon" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                                        <button class="btn-icon" title="Reiniciar Conexão"><i class="fa-solid fa-rotate-right"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
 
-        <div class="column">
-          <section class="card">
-            <h2>Adicionar Música na Fila</h2>
-            <p>Busque por nome ou artista e clique em "Adicionar" no vídeo desejado.</p>
-            <div class="form-group">
-              <input type="text" id="adminVideoSearchInput" placeholder="Ex: Zeca Pagodinho - Deixa a Vida Me Levar">
-              <button id="searchVideoBtn">Buscar</button>
-            </div>
-            <div id="adminSearchResults" class="search-results-container"></div>
-          </section>
-
-          <section class="card">
-             <h2>Faixa Promocional</h2>
-             <p>Digite o texto que aparecerá na faixa inferior da tela do player.</p>
-             <div class="form-group">
-               <input type="text" id="promoText" placeholder="Ex: Promoção! 3 Cervejas por R$ 10,00">
-               <button id="savePromoBtn">Salvar</button>
-             </div>
-          </section>
-          
-          <section class="card full-height">
-            <h2>Lista de Inatividade (Autoplay)</h2>
-            <p>Use a busca abaixo para adicionar os vídeos exatos na lista.</p>
-            <div class="form-group">
-              <input type="text" id="inactivitySearchInput" placeholder="Buscar vídeo para a lista...">
-              <button id="inactivitySearchBtn">Buscar</button>
-            </div>
-            <div id="inactivitySearchResults" class="search-results-container" style="margin-top: 10px;"></div>
-            <div class="form-group vertical" style="margin-top: 15px;">
-              <textarea id="inactivityList" rows="10" placeholder="Os nomes dos vídeos adicionados aparecerão aqui..."></textarea>
-              <button id="saveListBtn">Salvar Lista</button>
-            </div>
-          </section>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-  <script src="js/admin.js"></script>
-  
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('SW registrado!', reg))
-          .catch(err => console.log('SW falhou:', err));
-      });
-    }
-  </script>
+    <!-- Scripts do Sistema -->
+    <script src="js/admin.js"></script>
 </body>
 </html>
