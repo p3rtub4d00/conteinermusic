@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controle | Conteiner Music</title>
+    <title>Controle do Player | Conteiner Music</title>
     <!-- CSS Customizado -->
     <link rel="stylesheet" href="css/admin.css">
     <!-- Fonte Inter (Google Fonts) -->
@@ -22,16 +22,13 @@
             <nav class="sidebar-nav">
                 <ul class="nav-list">
                     <li class="nav-item active">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+                        <a href="#" class="nav-link"><i class="fa-solid fa-sliders"></i> Controle de Áudio</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-store"></i> Estabelecimentos</a>
+                        <a href="#" class="nav-link"><i class="fa-solid fa-list-ul"></i> Fila de Reprodução</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-mobile-screen"></i> Players & Dispositivos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-music"></i> Gestão de Playlists</a>
+                        <a href="#" class="nav-link"><i class="fa-solid fa-microphone-lines"></i> Vinhetas e Avisos</a>
                     </li>
                 </ul>
 
@@ -39,10 +36,10 @@
 
                 <ul class="nav-list">
                     <li class="nav-item">
-                        <a href="#" class="nav-link"><i class="fa-solid fa-gear"></i> Configurações</a>
+                        <a href="#" class="nav-link"><i class="fa-solid fa-gear"></i> Sistema</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link text-danger"><i class="fa-solid fa-right-from-bracket"></i> Sair do Sistema</a>
+                        <a href="#" class="nav-link text-danger"><i class="fa-solid fa-power-off"></i> Desligar Player</a>
                     </li>
                 </ul>
             </nav>
@@ -52,100 +49,76 @@
         <main class="main-content">
             <header class="topbar">
                 <div class="topbar-title">
-                    <h1>Visão Geral do Sistema</h1>
-                    <p class="subtitle">Bem-vindo ao painel de gerenciamento de streaming de áudio comercial.</p>
+                    <h1>Painel de Controle</h1>
+                    <p class="subtitle">Gerencie a reprodução e o ambiente sonoro do estabelecimento.</p>
                 </div>
                 <div class="user-profile">
-                    <span class="user-name">Administrador</span>
+                    <span class="user-name">Administrador Local</span>
                     <div class="avatar"><i class="fa-solid fa-user"></i></div>
                 </div>
             </header>
 
-            <section class="dashboard-cards">
-                <div class="card stat-card">
-                    <div class="stat-icon bg-blue"><i class="fa-solid fa-tower-broadcast"></i></div>
-                    <div class="stat-info">
-                        <h3>Players Ativos</h3>
-                        <p class="stat-value">24</p>
+            <section class="dashboard-cards player-section">
+                <!-- Card: Tocando Agora -->
+                <div class="card player-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-compact-disc"></i> Tocando Agora</h2>
+                        <span class="badge status-online">Transmissão Ativa</span>
+                    </div>
+                    <div class="now-playing">
+                        <div class="track-info">
+                            <h3 id="current-title">Aguardando faixa...</h3>
+                            <p id="current-artist">Conectando ao servidor</p>
+                        </div>
+                        <div class="playback-controls">
+                            <button class="btn-control" id="btn-prev" title="Anterior"><i class="fa-solid fa-backward-step"></i></button>
+                            <button class="btn-control play-pause" id="btn-play" title="Play/Pause"><i class="fa-solid fa-circle-play"></i></button>
+                            <button class="btn-control" id="btn-next" title="Próxima"><i class="fa-solid fa-forward-step"></i></button>
+                        </div>
                     </div>
                 </div>
-                <div class="card stat-card">
-                    <div class="stat-icon bg-green"><i class="fa-solid fa-check-circle"></i></div>
-                    <div class="stat-info">
-                        <h3>Estabelecimentos Online</h3>
-                        <p class="stat-value">18</p>
+
+                <!-- Card: Controle de Volume -->
+                <div class="card volume-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-volume-high"></i> Controle de Volume</h2>
                     </div>
-                </div>
-                <div class="card stat-card">
-                    <div class="stat-icon bg-purple"><i class="fa-solid fa-compact-disc"></i></div>
-                    <div class="stat-info">
-                        <h3>Faixas em Reprodução</h3>
-                        <p class="stat-value">12</p>
+                    <div class="volume-content">
+                        <div class="volume-slider-container">
+                            <i class="fa-solid fa-volume-low text-muted"></i>
+                            <input type="range" id="volume-slider" min="0" max="100" value="85" class="slider">
+                            <i class="fa-solid fa-volume-high text-muted"></i>
+                        </div>
+                        <div class="volume-status">
+                            Nível: <span id="volume-label">85%</span>
+                        </div>
                     </div>
                 </div>
             </section>
 
+            <!-- Card: Seleção de Gênero/Playlist -->
             <section class="recent-activity">
                 <div class="card table-card">
                     <div class="card-header">
-                        <h2>Monitoramento de Players em Tempo Real</h2>
-                        <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Novo Player</button>
+                        <h2><i class="fa-solid fa-music"></i> Seleção de Repertório</h2>
+                        <button class="btn btn-primary" id="btn-update-playlist"><i class="fa-solid fa-rotate"></i> Aplicar Mudança</button>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Status</th>
-                                    <th>Estabelecimento</th>
-                                    <th>Dispositivo (Zona)</th>
-                                    <th>Playlist Atual</th>
-                                    <th>Volume</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><span class="badge status-online">Online</span></td>
-                                    <td>Bar Central</td>
-                                    <td>Tablet Balcão (Zona 1)</td>
-                                    <td>Sexta Animada</td>
-                                    <td>85%</td>
-                                    <td>
-                                        <button class="btn-icon" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                        <button class="btn-icon" title="Pausar"><i class="fa-solid fa-pause"></i></button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><span class="badge status-online">Online</span></td>
-                                    <td>Lounge Premium</td>
-                                    <td>Web Player (Zona Única)</td>
-                                    <td>Ambiente Fim de Tarde</td>
-                                    <td>60%</td>
-                                    <td>
-                                        <button class="btn-icon" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                        <button class="btn-icon" title="Pausar"><i class="fa-solid fa-pause"></i></button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><span class="badge status-offline">Offline</span></td>
-                                    <td>Restaurante Sabor</td>
-                                    <td>Android TV (Salão)</td>
-                                    <td>-</td>
-                                    <td>-</td>
-                                    <td>
-                                        <button class="btn-icon" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                        <button class="btn-icon" title="Reiniciar Conexão"><i class="fa-solid fa-rotate-right"></i></button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="playlist-selection">
+                        <label for="playlist-selector" class="form-label">Escolha o estilo musical principal para tocar agora:</label>
+                        <select id="playlist-selector" class="form-select">
+                            <option value="pagode">Pagode</option>
+                            <option value="sertanejo">Sertanejo Sofrência</option>
+                            <option value="piseiro">Piseiro</option>
+                            <option value="brega">Brega</option>
+                            <option value="variado">Mix Variado (Automático)</option>
+                        </select>
                     </div>
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- Scripts do Sistema -->
+    <!-- Scripts do Sistema (Certifique-se de que seu admin.js capture os cliques dos IDs acima) -->
     <script src="js/admin.js"></script>
 </body>
 </html>
