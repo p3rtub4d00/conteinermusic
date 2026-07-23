@@ -1,6 +1,5 @@
 const socket = io();
 
-// Elementos da DOM
 const revenueSpan = document.getElementById('revenue');
 const resetRevenueBtn = document.getElementById('resetRevenueBtn');
 const currentAdminPasswordInput = document.getElementById('currentAdminPassword');
@@ -29,7 +28,6 @@ const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
 const promoTextInput = document.getElementById('promoText');
 const savePromoBtn = document.getElementById('savePromoBtn');
 
-// Elementos de Autoplay Modes
 const autoplayModeSelect = document.getElementById('autoplayMode');
 const manualAutoplaySection = document.getElementById('manualAutoplaySection');
 const playlistAutoplaySection = document.getElementById('playlistAutoplaySection');
@@ -37,7 +35,6 @@ const playlistAutoplaySection = document.getElementById('playlistAutoplaySection
 let inactivityItems = [];
 let isSavingInactivityList = false;
 
-// --- Toastify Helper ---
 function showToast(message, type = 'info') {
     let backgroundColor;
     if (type === 'error') backgroundColor = "linear-gradient(to right, #ff5f6d, #ffc371)";
@@ -55,11 +52,6 @@ function showToast(message, type = 'info') {
     }).showToast();
 }
 
-// -----------------
-// Eventos de Saída (Client -> Server)
-// -----------------
-
-// Lógica de Alternância: Modo Manual vs Playlist
 if (autoplayModeSelect) {
     autoplayModeSelect.addEventListener('change', (e) => {
         const mode = e.target.value;
@@ -70,13 +62,11 @@ if (autoplayModeSelect) {
             manualAutoplaySection.style.display = 'block';
             playlistAutoplaySection.style.display = 'none';
         }
-        
         socket.emit('admin:setAutoplayMode', mode);
         showToast(`Modo alterado para: ${mode === 'playlist' ? 'Playlist Dinâmica' : 'Lista Manual'}`, 'info');
     });
 }
 
-// --- Seleção Rápida de Gêneros por Botão (1 Clique) ---
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('.genre-select-btn');
     if (btn) {
@@ -100,11 +90,10 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// 1. Salvar lista de inatividade (Manual)
 if (saveListBtn) {
     saveListBtn.addEventListener('click', () => {
         if (isSavingInactivityList) return;
-        if (!socket.connected) return showToast('Sem conexão com o servidor. Tente novamente em instantes.', 'error');
+        if (!socket.connected) return showToast('Sem conexão com o servidor.', 'error');
         const names = inactivityListText.value.split('\n').map(name => name.trim()).filter(name => name.length > 0);
         const availableItems = [...inactivityItems];
         const itemsToSave = names.map(title => {
@@ -121,9 +110,9 @@ if (saveListBtn) {
 
 if (resetRevenueBtn) {
     resetRevenueBtn.addEventListener('click', () => {
-        if (!confirm('Deseja zerar o faturamento do dia? Esta ação não apaga os pagamentos registrados.')) return;
+        if (!confirm('Deseja zerar o faturamento do dia?')) return;
         socket.emit('admin:resetRevenue', (result) => {
-            if (!result?.ok) return showToast('Não foi possível zerar o faturamento.', 'error');
+            if (!result?.ok) return showToast('Erro ao zerar faturamento.', 'error');
             showToast('Faturamento do dia zerado.', 'success');
         });
     });
@@ -134,9 +123,9 @@ if (changeAdminPasswordBtn) {
         const currentPassword = currentAdminPasswordInput?.value || '';
         const newPassword = newAdminPasswordInput?.value || '';
         const confirmation = confirmAdminPasswordInput?.value || '';
-        if (!currentPassword || !newPassword) return showToast('Preencha todos os campos de senha.', 'error');
-        if (newPassword.length < 8) return showToast('A nova senha deve ter pelo menos 8 caracteres.', 'error');
-        if (newPassword !== confirmation) return showToast('A confirmação não corresponde à nova senha.', 'error');
+        if (!currentPassword || !newPassword) return showToast('Preencha os campos de senha.', 'error');
+        if (newPassword.length < 8) return showToast('A senha deve ter pelo menos 8 caracteres.', 'error');
+        if (newPassword !== confirmation) return showToast('As senhas não coincidem.', 'error');
 
         changeAdminPasswordBtn.disabled = true;
         try {
@@ -147,13 +136,13 @@ if (changeAdminPasswordBtn) {
                 body: JSON.stringify({ currentPassword, newPassword })
             });
             const result = await response.json();
-            if (!result?.ok) throw new Error(result?.error || 'Não foi possível alterar a senha.');
+            if (!result?.ok) throw new Error(result?.error || 'Erro ao alterar senha.');
             currentAdminPasswordInput.value = '';
             newAdminPasswordInput.value = '';
             confirmAdminPasswordInput.value = '';
-            showToast('Senha alterada com sucesso. Use a nova senha no próximo acesso.', 'success');
+            showToast('Senha alterada com sucesso!', 'success');
         } catch (error) {
-            showToast(error.message || 'Não foi possível alterar a senha.', 'error');
+            showToast(error.message, 'error');
         } finally {
             changeAdminPasswordBtn.disabled = false;
         }
@@ -163,7 +152,7 @@ if (changeAdminPasswordBtn) {
 if (searchVideoBtn) {
     searchVideoBtn.addEventListener('click', () => {
         const query = adminVideoSearchInput.value.trim();
-        if (!query) return showToast('Por favor, digite um termo para buscar.', 'error');
+        if (!query) return showToast('Digite um termo para buscar.', 'error');
         adminSearchResultsDiv.innerHTML = '<p>Buscando...</p>';
         socket.emit('admin:search', query);
     });
@@ -184,7 +173,7 @@ if (adminSearchResultsDiv) {
             const videoId = e.target.dataset.id;
             const videoTitle = e.target.dataset.title; 
             if (videoId) {
-                socket.emit('admin:addVideo', { videoId: videoId, videoTitle: videoTitle }); 
+                socket.emit('admin:addVideo', { videoId, videoTitle }); 
                 adminVideoSearchInput.value = '';
                 adminSearchResultsDiv.innerHTML = '';
                 showToast(`"${videoTitle}" adicionado à fila!`, 'success');
@@ -204,25 +193,19 @@ if (inactivitySearchResultsDiv) {
                 if (videoId) inactivityItems.push({ title: videoTitle, videoId });
                 inactivitySearchInput.value = '';
                 inactivitySearchResultsDiv.innerHTML = '';
-                showToast('Adicionado ao campo de texto. Clique em "Salvar Lista Manual" para confirmar.', 'info');
+                showToast('Adicionado ao campo. Clique em "Salvar Lista Manual".', 'info');
             }
         }
     });
 }
 
 if (pauseBtn) {
-    pauseBtn.addEventListener('click', () => {
-        socket.emit('admin:controlPause');
-        showToast('Comando de Pausa/Play enviado.', 'info');
-    });
+    pauseBtn.addEventListener('click', () => socket.emit('admin:controlPause'));
 }
 
 if (skipBtn) {
     skipBtn.addEventListener('click', () => {
-        if(confirm('Tem certeza que deseja pular a música atual?')) {
-            socket.emit('admin:controlSkip');
-            showToast('Pulando música...', 'success');
-        }
+        if(confirm('Deseja pular a música atual?')) socket.emit('admin:controlSkip');
     });
 }
 
@@ -230,7 +213,7 @@ if (volumeSlider) {
     volumeSlider.addEventListener('input', (e) => {
         const volume = e.target.value;
         if(volumeValueSpan) volumeValueSpan.textContent = `${volume}%`;
-        socket.emit('admin:controlVolume', { volume: volume });
+        socket.emit('admin:controlVolume', { volume });
     });
 }
 
@@ -238,46 +221,31 @@ if (saveMaxPlaybackBtn) {
     saveMaxPlaybackBtn.addEventListener('click', () => {
         const minutes = Number(maxPlaybackMinutesInput?.value);
         if (!Number.isFinite(minutes) || minutes < 1 || minutes > 30) {
-            showToast('Informe um tempo entre 1 e 30 minutos.', 'error');
-            return;
+            return showToast('Informe um tempo entre 1 e 30 minutos.', 'error');
         }
         socket.emit('admin:setMaxPlaybackMinutes', { minutes: Math.round(minutes) });
-        showToast('Tempo máximo por música atualizado!', 'success');
+        showToast('Tempo máximo atualizado!', 'success');
     });
 }
 
 if (savePromoBtn) {
     savePromoBtn.addEventListener('click', () => {
-        const text = promoTextInput.value.trim();
-        socket.emit('admin:setPromoText', text);
-        showToast('Texto da promoção atualizado na TV!', 'success');
+        socket.emit('admin:setPromoText', promoTextInput.value.trim());
+        showToast('Promoção atualizada na TV!', 'success');
     });
 }
 
 if (refreshHistoryBtn) {
-    refreshHistoryBtn.addEventListener('click', () => {
-        socket.emit('admin:getPlayHistory');
-        showToast('Atualizando histórico...', 'info');
-    });
+    refreshHistoryBtn.addEventListener('click', () => socket.emit('admin:getPlayHistory'));
 }
 
-// -----------------
-// Eventos de Entrada (Server -> Client)
-// -----------------
-
-socket.on('connect', () => {
-  console.log('Conectado ao servidor como admin.');
-  socket.emit('admin:getList');
-});
-
+socket.on('connect', () => socket.emit('admin:getList'));
 socket.on('admin:updateRevenue', (amount) => {
   if (revenueSpan) revenueSpan.textContent = amount.toFixed(2).replace('.', ',');
 });
 
 socket.on('admin:loadInactivityList', (nameArray) => {
-  inactivityItems = (nameArray || []).map(item => typeof item === 'string'
-    ? { title: item }
-    : { title: item.title, videoId: item.videoId });
+  inactivityItems = (nameArray || []).map(item => typeof item === 'string' ? { title: item } : { title: item.title, videoId: item.videoId });
   if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
 });
 
@@ -294,29 +262,18 @@ socket.on('admin:inactivityListSaved', (result) => {
     saveListBtn.disabled = false;
     saveListBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Lista Manual';
   }
-  if (!result?.ok) return showToast(result?.error || 'Não foi possível salvar a lista.', 'error');
-
+  if (!result?.ok) return showToast(result?.error || 'Erro ao salvar lista.', 'error');
   inactivityItems = result.items || [];
   if (inactivityListText) inactivityListText.value = inactivityItems.map(item => item.title).join('\n');
-  if (result.failedTitles?.length) {
-    showToast(`${result.saved} salva(s). Não encontradas: ${result.failedTitles.join(', ')}`, 'error');
-  } else {
-    showToast(`${result.saved} música(s) salva(s) na lista manual!`, 'success');
-  }
+  showToast(`${result.saved} música(s) salva(s) com sucesso!`, 'success');
 });
 
 socket.on('admin:searchResults', (results) => {
   if (!adminSearchResultsDiv) return;
-  if (results.length === 0) {
-    adminSearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
-    return;
-  }
+  if (results.length === 0) return adminSearchResultsDiv.innerHTML = '<p>Nenhum resultado.</p>';
   adminSearchResultsDiv.innerHTML = results.map(video => `
     <div class="search-result-item">
-      <div class="result-info">
-        <strong>${video.title}</strong>
-        <small>${video.channel}</small>
-      </div>
+      <div class="result-info"><strong>${video.title}</strong><small>${video.channel}</small></div>
       <button class="add-result-btn" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">Adicionar</button>
     </div>
   `).join('');
@@ -324,16 +281,10 @@ socket.on('admin:searchResults', (results) => {
 
 socket.on('admin:inactivitySearchResults', (results) => {
   if (!inactivitySearchResultsDiv) return; 
-  if (results.length === 0) {
-    inactivitySearchResultsDiv.innerHTML = '<p>Nenhum resultado encontrado.</p>';
-    return;
-  }
+  if (results.length === 0) return inactivitySearchResultsDiv.innerHTML = '<p>Nenhum resultado.</p>';
   inactivitySearchResultsDiv.innerHTML = results.map(video => `
     <div class="search-result-item">
-      <div class="result-info">
-        <strong>${video.title}</strong>
-        <small>${video.channel}</small>
-      </div>
+      <div class="result-info"><strong>${video.title}</strong><small>${video.channel}</small></div>
       <button class="add-inactivity-btn" data-id="${video.id}" data-title="${video.title.replace(/"/g, "'")}">Adicionar</button>
     </div>
   `).join('');
@@ -345,9 +296,7 @@ socket.on('admin:updateVolume', (data) => {
 });
 
 socket.on('admin:updateMaxPlaybackMinutes', (minutes) => {
-  if (maxPlaybackMinutesInput) {
-    maxPlaybackMinutesInput.value = minutes;
-  }
+  if (maxPlaybackMinutesInput) maxPlaybackMinutesInput.value = minutes;
 });
 
 socket.on('updatePlayerState', (state) => {
@@ -387,45 +336,30 @@ socket.on('admin:loadPromoText', (text) => {
 
 socket.on('admin:playHistory', (history) => {
   if (!adminPlayHistoryList) return;
-  if (!history || history.length === 0) {
-    adminPlayHistoryList.innerHTML = '<li>(Nenhuma música registrada ainda)</li>';
-    return;
-  }
+  if (!history || history.length === 0) return adminPlayHistoryList.innerHTML = '<li>(Nenhuma música registrada)</li>';
 
   adminPlayHistoryList.innerHTML = history.map(item => {
     const playedAt = new Date(item.playedAt).toLocaleString('pt-BR');
-    const sourceLabel = item.source === 'customer'
-      ? 'Cliente'
-      : (item.source === 'admin' ? 'Admin' : 'Inatividade');
+    const sourceLabel = item.source === 'customer' ? 'Cliente' : (item.source === 'admin' ? 'Admin' : 'Inatividade');
     const phoneInfo = item.userPhone ? ` | Tel: ${item.userPhone}` : '';
     const messageInfo = item.message ? ` | Msg: "${item.message}"` : '';
     return `<li><strong>${item.title || 'Sem título'}</strong><br><small>${playedAt} | Origem: ${sourceLabel}${phoneInfo}${messageInfo}</small></li>`;
   }).join('');
 });
 
-// PWA Logic
 let deferredPrompt;
 const installBtn = document.getElementById('installAppBtn');
-
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
   if (installBtn) installBtn.style.display = 'block';
 });
-
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`User response to the install prompt: ${outcome}`);
       deferredPrompt = null;
       installBtn.style.display = 'none';
     }
   });
 }
-
-window.addEventListener('appinstalled', () => {
-  console.log('PWA was installed');
-  if (installBtn) installBtn.style.display = 'none';
-});
