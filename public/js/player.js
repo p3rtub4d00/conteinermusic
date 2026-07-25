@@ -4,6 +4,7 @@ let isPlayerReady = false;
 
 let currentVideoTimer = null;
 let maxPlaybackTimeMs = 5 * 60 * 1000; // 5 minutos (padrão)
+let shouldLimitCurrentVideo = false;
 
 let pendingVideo = null;
 // Enquanto um novo vídeo está carregando, o iframe pode informar que o vídeo
@@ -155,7 +156,7 @@ function onPlayerStateChange(event) {
   if (event.data === YT.PlayerState.PLAYING) {
     isLoadingNewVideo = false;
     hasReportedVideoEnd = false;
-    if (!currentVideoTimer) {
+    if (shouldLimitCurrentVideo && !currentVideoTimer) {
       currentVideoTimer = setTimeout(() => {
         reportVideoEnded();
       }, maxPlaybackTimeMs);
@@ -218,8 +219,8 @@ function updateQueueDisplay(queue) {
     }).join('');
 }
 
-socket.on('player:playVideo', ({ videoId, title, message }) => {
-  const videoInfo = { videoId, title, message };
+socket.on('player:playVideo', ({ videoId, title, message, limitPlayback }) => {
+  const videoInfo = { videoId, title, message, limitPlayback: Boolean(limitPlayback) };
   if (isPlayerReady) {
     playVideo(videoInfo);
   } else {
@@ -268,13 +269,14 @@ socket.on('player:setMaxPlaybackTime', (data) => {
   }
 });
 
-function playVideo({ videoId, title, message }) {
+function playVideo({ videoId, title, message, limitPlayback = false }) {
   if (!isPlayerReady) return;
   if (synth && synth.speaking) synth.cancel();
   if (currentVideoTimer) {
     clearTimeout(currentVideoTimer);
     currentVideoTimer = null;
   }
+  shouldLimitCurrentVideo = Boolean(limitPlayback);
   // Marque antes de parar o vídeo atual: stopVideo pode disparar ENDED.
   isLoadingNewVideo = true;
   ignoreEndedEventsUntil = Date.now() + 1500;

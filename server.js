@@ -356,7 +356,8 @@ async function playNextInQueue() {
         io.emit('player:playVideo', {
           videoId: nowPlayingInfo.id,
           title: nowPlayingInfo.title,
-          message: nowPlayingInfo.message
+          message: nowPlayingInfo.message,
+          limitPlayback: Boolean(nextVideo.isCustomer)
         });
       } else {
         console.log('[Server] Fila vazia.');
@@ -687,7 +688,8 @@ io.on("connection", async (socket) => {
     
     socket.emit('player:setInitialState', { 
       volume: freshConfig.currentVolume, 
-      isMuted: freshConfig.isMuted 
+      isMuted: freshConfig.isMuted,
+      maxPlaybackMinutes: freshConfig.maxPlaybackMinutes
     });
     socket.emit('player:updatePromoText', freshConfig.currentPromoText);
     
